@@ -125,23 +125,21 @@ func main() {
 		fmt.Printf("An error occurred while attempting to read from the config file.\nError: %v\n", err)
 	}
 
-	fmt.Println("################################")
-	fmt.Println("Handy Task Parameter Values")
+	fmt.Println("\nHandy Task Parameter Values")
 
 	// If not provided arg values to config values
 	if quality == 0 {
 		quality = config.Quality
 	}
 
-	fmt.Printf("Quality: %d", quality)
+	fmt.Printf("Quality: %d\n", quality)
 
 	if encoder == "" {
 		encoder = config.Encoder
 	}
 
-	fmt.Printf("Encoder: %s", encoder)
-
-	fmt.Println("################################")
+	fmt.Printf("Encoder: %s\n", encoder)
+	fmt.Println()
 
 	inputDirInfo, err := os.Stat(fmt.Sprintf("./%s", INPUT_DIR_NAME))
 
