@@ -1,17 +1,18 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
-	"io/fs"
 	"math"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
+
+	"github.com/dmars8047/handy/internal/ui"
+	"github.com/rivo/tview"
 )
 
 const (
@@ -112,175 +113,188 @@ func main() {
 		quality = DEFAULT_QUALITY
 	}
 
-	_, err := exec.LookPath("HandBrakeCLI")
+	// _, err := exec.LookPath("HandBrakeCLI")
+
+	// if err != nil {
+	// 	fmt.Println("HandBrakeCLI not found in $PATH. Please install the HandBrakeCLI. Exiting.")
+	// 	return
+	// }
+
+	// config, err := readConfig()
+
+	// if err != nil {
+	// 	fmt.Printf("An error occurred while attempting to read from the config file.\nError: %v\n", err)
+	// }
+
+	// fmt.Println("\nHandy Task Parameter Values")
+
+	// // If not provided arg values to config values
+	// if quality == 0 {
+	// 	quality = config.Quality
+	// }
+
+	// fmt.Printf("Quality: %d\n", quality)
+
+	// if encoder == "" {
+	// 	encoder = config.Encoder
+	// }
+
+	// fmt.Printf("Encoder: %s\n", encoder)
+	// fmt.Println()
+
+	// inputDirInfo, err := os.Stat(fmt.Sprintf("./%s", INPUT_DIR_NAME))
+
+	// if err != nil {
+	// 	if errors.Is(err, os.ErrNotExist) {
+	// 		fmt.Printf("Input directory does not exist. Run handy -s and load the resulting '%s' directory with .mkv files to be encoded.\n", INPUT_DIR_NAME)
+	// 	} else {
+	// 		fmt.Printf("An error occurred while scanning for a preexisting %s directory.\nError: %v\n", INPUT_DIR_NAME, err)
+	// 	}
+
+	// 	return
+	// }
+
+	// // Check to make sure that the input directory contains .mkv files
+	// inputDirEntries, err := os.ReadDir(inputDirInfo.Name())
+
+	// if err != nil {
+	// 	fmt.Printf("An error occurred while reading files from the input directory.\nError: %v\n", err)
+	// 	return
+	// }
+
+	// var mkvDirEntries []fs.DirEntry = make([]fs.DirEntry, 0)
+
+	// for _, entry := range inputDirEntries {
+	// 	if strings.HasSuffix(entry.Name(), ".mkv") && !entry.IsDir() {
+	// 		mkvDirEntries = append(mkvDirEntries, entry)
+	// 	}
+	// }
+
+	// if len(mkvDirEntries) == 0 {
+	// 	fmt.Printf("No .mkv files found in input directory. Exiting.\n")
+	// 	return
+	// }
+
+	// outputDirInfo, err := os.Stat(fmt.Sprintf("./%s", OUTPUT_DIR_NAME))
+
+	// if err != nil {
+	// 	if errors.Is(err, os.ErrNotExist) {
+	// 		fmt.Printf("Output directory does not exist in the current working directory. Creating the output directory...\n")
+
+	// 		err := createDirectories(OUTPUT_DIR_NAME)
+
+	// 		if err != nil {
+	// 			fmt.Printf("An error occurred while creating output directory.\nError: %v\n", err)
+	// 			return
+	// 		}
+	// 	} else {
+	// 		fmt.Printf("An error occurred while scanning for a preexisting %s directory: %v\n", INPUT_DIR_NAME, err)
+	// 		return
+	// 	}
+	// }
+
+	app := tview.NewApplication()
+	nav := ui.NewNavigator(context.Background())
+
+	homePage := &ui.HomePage{}
+	homePage.Setup(app, nav)
+
+	// Start the application.
+	err := app.SetRoot(nav.Pages, true).Run()
 
 	if err != nil {
-		fmt.Println("HandBrakeCLI not found in $PATH. Please install the HandBrakeCLI. Exiting.")
-		return
+		panic(err)
 	}
 
-	config, err := readConfig()
+	// totalBytesSaved := int64(0)
+	// overallStartTime := time.Now()
 
-	if err != nil {
-		fmt.Printf("An error occurred while attempting to read from the config file.\nError: %v\n", err)
-	}
+	// for _, mkvFile := range mkvDirEntries {
 
-	fmt.Println("\nHandy Task Parameter Values")
+	// 	inputFileInfo, err := mkvFile.Info()
 
-	// If not provided arg values to config values
-	if quality == 0 {
-		quality = config.Quality
-	}
+	// 	if err != nil {
+	// 		fmt.Printf("An error occurred when reading input file info from disk. Aborting remaining encoding tasks.\nError:  %v\n", err)
+	// 	}
 
-	fmt.Printf("Quality: %d\n", quality)
+	// 	outputFileRelPath := fmt.Sprintf("./%s/%s", outputDirInfo.Name(), inputFileInfo.Name())
 
-	if encoder == "" {
-		encoder = config.Encoder
-	}
+	// 	fmt.Printf("Encoding: %s\n", inputFileInfo.Name())
 
-	fmt.Printf("Encoder: %s\n", encoder)
-	fmt.Println()
+	// 	// HandBrakeCLI --input 50_First_Dates.mkv --output output.mkv --encoder nvenc_h264 --quality 18 --subtitle-lang-list English --all-subtitles --audio-lang-list English --all-audio
+	// 	handbrakeCommand := exec.Command("HandBrakeCLI",
+	// 		"--input", fmt.Sprintf("./%s/%s", inputDirInfo.Name(), inputFileInfo.Name()),
+	// 		"--output", outputFileRelPath,
+	// 		"--encoder", encoder,
+	// 		"--quality", fmt.Sprintf("%d", quality),
+	// 		"--subtitle-lang-list", "eng,jpn",
+	// 		"--all-subtitles",
+	// 		"--audio-lang-list", "eng",
+	// 		"--all-audio",
+	// 	)
 
-	inputDirInfo, err := os.Stat(fmt.Sprintf("./%s", INPUT_DIR_NAME))
+	// 	// Get stdout pipe
+	// 	stdoutPipe, err := handbrakeCommand.StdoutPipe()
 
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			fmt.Printf("Input directory does not exist. Run handy -s and load the resulting '%s' directory with .mkv files to be encoded.", INPUT_DIR_NAME)
-		} else {
-			fmt.Printf("An error occurred while scanning for a preexisting %s directory.\nError: %v\n", INPUT_DIR_NAME, err)
-		}
+	// 	if err != nil {
+	// 		fmt.Printf("An error occurred when creating stdout pipe from HandBrakeCLI. Aborting remaining encoding tasks.\nError:  %v\n", err)
+	// 		return
+	// 	}
 
-		return
-	}
+	// 	encodeStartTime := time.Now()
 
-	// Check to make sure that the input directory contains .mkv files
-	inputDirEntries, err := os.ReadDir(inputDirInfo.Name())
+	// 	// Start the command
+	// 	if err := handbrakeCommand.Start(); err != nil {
+	// 		fmt.Printf("An error when spawning HandBrakeCLI process. Aborting remaining encoding tasks.\nError: %v\n", err)
+	// 		return
+	// 	}
 
-	if err != nil {
-		fmt.Printf("An error occurred while reading files from the input directory.\nError: %v\n", err)
-		return
-	}
+	// 	// Read the output from the pipe
+	// 	buf := make([]byte, 1024)
 
-	var mkvDirEntries []fs.DirEntry = make([]fs.DirEntry, 0)
+	// 	for {
+	// 		n, err := stdoutPipe.Read(buf)
+	// 		if n > 0 {
+	// 			fmt.Print(string(buf[:n]))
+	// 		}
+	// 		if err != nil {
+	// 			break
+	// 		}
+	// 	}
 
-	for _, entry := range inputDirEntries {
-		if strings.HasSuffix(entry.Name(), ".mkv") && !entry.IsDir() {
-			mkvDirEntries = append(mkvDirEntries, entry)
-		}
-	}
+	// 	// Wait for the command to finish
+	// 	if err := handbrakeCommand.Wait(); err != nil {
+	// 		fmt.Printf("An error occurred during sqawned HandBrakeCLI execution.\nError: %v\n", err)
+	// 		return
+	// 	}
 
-	if len(mkvDirEntries) == 0 {
-		fmt.Printf("No .mkv files found in input directory. Exiting.\n")
-		return
-	}
+	// 	encodeDuration := time.Since(encodeStartTime).Round(time.Second)
 
-	outputDirInfo, err := os.Stat(fmt.Sprintf("./%s", OUTPUT_DIR_NAME))
+	// 	outputFileAbsPath, err := filepath.Abs(outputFileRelPath)
 
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			fmt.Printf("Output directory does not exist in the current working directory. Creating the output directory...\n")
+	// 	if err != nil {
+	// 		fmt.Printf("Error getting full path of output file '%s'. Aborting remaining encoding tasks.\nError: %v\n", outputDirInfo.Name(), err)
+	// 		return
+	// 	}
 
-			err := createDirectories(OUTPUT_DIR_NAME)
+	// 	outputSize, err := getFileSize(outputFileAbsPath)
 
-			if err != nil {
-				fmt.Printf("An error occurred while creating output directory.\nError: %v\n", err)
-				return
-			}
-		} else {
-			fmt.Printf("An error occurred while scanning for a preexisting %s directory: %v\n", INPUT_DIR_NAME, err)
-			return
-		}
-	}
+	// 	if err != nil {
+	// 		fmt.Printf("An error occurred when reading output file info from disk. Aborting remaining encoding tasks.\nError:  %v\n", err)
+	// 	}
 
-	totalBytesSaved := int64(0)
-	overallStartTime := time.Now()
+	// 	bytesSaved := inputFileInfo.Size() - outputSize
+	// 	totalBytesSaved += bytesSaved
 
-	for _, mkvFile := range mkvDirEntries {
+	// 	fmt.Printf("Encode Complete: Output file - %s\n", outputFileAbsPath)
+	// 	fmt.Printf("Time Elapsed: %s\n", formatTimeElapsedString(encodeDuration))
+	// 	fmt.Printf("Saved Space: %s\n", formatSavedSpace(bytesSaved))
+	// }
 
-		inputFileInfo, err := mkvFile.Info()
-
-		if err != nil {
-			fmt.Printf("An error occurred when reading input file info from disk. Aborting remaining encoding tasks.\nError:  %v\n", err)
-		}
-
-		outputFileRelPath := fmt.Sprintf("./%s/%s", outputDirInfo.Name(), inputFileInfo.Name())
-
-		fmt.Printf("Encoding: %s\n", inputFileInfo.Name())
-
-		// HandBrakeCLI --input 50_First_Dates.mkv --output output.mkv --encoder nvenc_h264 --quality 18 --subtitle-lang-list English --all-subtitles --audio-lang-list English --all-audio
-		handbrakeCommand := exec.Command("HandBrakeCLI",
-			"--input", fmt.Sprintf("./%s/%s", inputDirInfo.Name(), inputFileInfo.Name()),
-			"--output", outputFileRelPath,
-			"--encoder", encoder,
-			"--quality", fmt.Sprintf("%d", quality),
-			"--subtitle-lang-list", "eng,jpn",
-			"--all-subtitles",
-			"--audio-lang-list", "eng",
-			"--all-audio",
-		)
-
-		// Get stdout pipe
-		stdoutPipe, err := handbrakeCommand.StdoutPipe()
-
-		if err != nil {
-			fmt.Printf("An error occurred when creating stdout pipe from HandBrakeCLI. Aborting remaining encoding tasks.\nError:  %v\n", err)
-			return
-		}
-
-		encodeStartTime := time.Now()
-
-		// Start the command
-		if err := handbrakeCommand.Start(); err != nil {
-			fmt.Printf("An error when spawning HandBrakeCLI process. Aborting remaining encoding tasks.\nError: %v\n", err)
-			return
-		}
-
-		// Read the output from the pipe
-		buf := make([]byte, 1024)
-
-		for {
-			n, err := stdoutPipe.Read(buf)
-			if n > 0 {
-				fmt.Print(string(buf[:n]))
-			}
-			if err != nil {
-				break
-			}
-		}
-
-		// Wait for the command to finish
-		if err := handbrakeCommand.Wait(); err != nil {
-			fmt.Printf("An error occurred during sqawned HandBrakeCLI execution.\nError: %v\n", err)
-			return
-		}
-
-		encodeDuration := time.Since(encodeStartTime).Round(time.Second)
-
-		outputFileAbsPath, err := filepath.Abs(outputFileRelPath)
-
-		if err != nil {
-			fmt.Printf("Error getting full path of output file '%s'. Aborting remaining encoding tasks.\nError: %v\n", outputDirInfo.Name(), err)
-			return
-		}
-
-		outputSize, err := getFileSize(outputFileAbsPath)
-
-		if err != nil {
-			fmt.Printf("An error occurred when reading output file info from disk. Aborting remaining encoding tasks.\nError:  %v\n", err)
-		}
-
-		bytesSaved := inputFileInfo.Size() - outputSize
-		totalBytesSaved += bytesSaved
-
-		fmt.Printf("Encode Complete: Output file - %s\n", outputFileAbsPath)
-		fmt.Printf("Time Elapsed: %s\n", formatTimeElapsedString(encodeDuration))
-		fmt.Printf("Saved Space: %s\n", formatSavedSpace(bytesSaved))
-	}
-
-	totalDuration := time.Since(overallStartTime).Round(time.Second)
-	fmt.Printf("\nEncoding Tasks Complete: See results in the '%s' directory.\n", outputDirInfo.Name())
-	fmt.Printf("Total Time Elapsed: %s\n", formatTimeElapsedString(totalDuration))
-	fmt.Printf("Total Saved Space: %s\n", formatSavedSpace(totalBytesSaved))
+	// totalDuration := time.Since(overallStartTime).Round(time.Second)
+	// fmt.Printf("\nEncoding Tasks Complete: See results in the '%s' directory.\n", outputDirInfo.Name())
+	// fmt.Printf("Total Time Elapsed: %s\n", formatTimeElapsedString(totalDuration))
+	// fmt.Printf("Total Saved Space: %s\n", formatSavedSpace(totalBytesSaved))
 }
 
 // Formats the given size in bytes into a human-readable string (GB, MB, KB, or Bytes).
