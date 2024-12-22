@@ -2,44 +2,60 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
-	"math"
-	"os"
-	"path/filepath"
+	"os/exec"
+	"regexp"
+	"slices"
+	"strconv"
+	"strings"
+	"sync"
 	"time"
 
-	"github.com/dmars8047/handy/internal/ui"
-	"github.com/rivo/tview"
+	"github.com/dmars8047/handy/internal/fs"
+	"github.com/dmars8047/handy/internal/hb"
+	"github.com/dmars8047/handy/internal/mkv"
 )
 
 const (
-	INPUT_DIR_NAME   = "Input"
-	OUTPUT_DIR_NAME  = "Output"
-	DEFAULT_QUALITY  = 20     // 18
-	DEFAULT_ENCODER  = "h264" //nvenc_h264
-	CONFIG_FILE_NAME = ".handy_config.json"
+	INPUT_DIR_NAME  = "Input"
+	OUTPUT_DIR_NAME = "Output"
 )
 
-var possibleEncoderValues map[string]struct{} = map[string]struct{}{
-	"svt_av1":          {},
-	"svt_av1_10bit":    {},
-	"x264":             {},
-	"x264_10bit":       {},
-	"nvenc_h264":       {},
-	"x265":             {},
-	"x265_10bit":       {},
-	"x265_12bit":       {},
-	"nvenc_h265":       {},
-	"nvenc_h265_10bit": {},
-	"mpeg4":            {},
-	"mpeg2":            {},
-	"VP8":              {},
-	"VP9":              {},
-	"VP9_10bit":        {},
-	"theora":           {},
+type TitleStatus struct {
+	TitleIndex int
+	Title      string
+	Ripping    string
+	Encoding   string
+}
+
+// ANSI color codes
+const (
+	colorReset  = "\033[0m"
+	colorGreen  = "\033[32m"
+	colorYellow = "\033[33m"
+	colorBlue   = "\033[36m"
+)
+
+// colorize wraps a string in the specified color
+func colorize(text, color string) string {
+	return fmt.Sprintf("%s%s%s", color, text, colorReset)
+}
+
+var ansiEscape = regexp.MustCompile(`\x1b\[[0-9;]*m`) // Regex to match ANSI escape codes
+
+// Strip ANSI escape codes and return the visible width of the string
+func visibleWidth(s string) int {
+	return len(ansiEscape.ReplaceAllString(s, ""))
+}
+
+// Pad a string to a specific width, accounting for visible length
+func padString(s string, width int) string {
+	visibleLen := visibleWidth(s)
+	if visibleLen < width {
+		return s + strings.Repeat(" ", width-visibleLen)
+	}
+	return s
 }
 
 func main() {
@@ -48,18 +64,18 @@ func main() {
 
 	setupFlag := flag.Bool("s", false, fmt.Sprintf(`Setup. 
 	Creates the %s and %s directory as well as a %s file with sensible defaults in the current working directory. 
-	Will not overwrite if they exist.`, INPUT_DIR_NAME, OUTPUT_DIR_NAME, CONFIG_FILE_NAME))
+	Will not overwrite if they exist.`, INPUT_DIR_NAME, OUTPUT_DIR_NAME, fs.CONFIG_FILE_NAME))
 
 	listFlag := flag.Bool("l", false, `List Encoders. 
 	Displays a list of all valid encoder options.`)
 
 	flag.IntVar(&quality, "q", 0, fmt.Sprintf(`Quality. 
 	Sets the quality value to be used for each encoding task. If not provided then the value will be read from the '%s' file. 
-	If the config file cannot be found then then a default value of '%d' will be used.`, CONFIG_FILE_NAME, DEFAULT_QUALITY))
+	If the config file cannot be found then then a default value of '%d' will be used.`, fs.CONFIG_FILE_NAME, hb.DEFAULT_QUALITY))
 
 	flag.StringVar(&encoder, "e", "", fmt.Sprintf(`Encoder. 
 	If not provided then the value will be read from the '%s' file. 
-	If the config file cannot be found then then a default value of '%s' will be used.`, CONFIG_FILE_NAME, DEFAULT_ENCODER))
+	If the config file cannot be found then then a default value of '%s' will be used.`, fs.CONFIG_FILE_NAME, hb.DEFAULT_ENCODER))
 
 	flag.Parse()
 
@@ -67,7 +83,7 @@ func main() {
 
 	if setup {
 		fmt.Println("Creating setup directories...")
-		setupErr := createDirectories(INPUT_DIR_NAME, OUTPUT_DIR_NAME)
+		setupErr := fs.CreateDirectories(INPUT_DIR_NAME, OUTPUT_DIR_NAME)
 
 		if setupErr != nil {
 			fmt.Printf("An error occurred while setting up directories.\nError: %v\n", setupErr)
@@ -76,7 +92,7 @@ func main() {
 
 		fmt.Println("Creating config file...")
 
-		setupErr = createConfigFile()
+		setupErr = fs.CreateConfigFile()
 
 		if setupErr != nil {
 			fmt.Printf("An error occurred while setting up the config file.\nError: %v\n", setupErr)
@@ -91,7 +107,7 @@ func main() {
 
 	if list {
 		fmt.Println("Valid encoders:")
-		for k := range possibleEncoderValues {
+		for k := range hb.PossibleEncoderValues {
 			fmt.Printf("%s\n", k)
 		}
 
@@ -100,7 +116,7 @@ func main() {
 	}
 
 	if encoder != "" {
-		_, encoderAllowed := possibleEncoderValues[encoder]
+		_, encoderAllowed := hb.PossibleEncoderValues[encoder]
 
 		if !encoderAllowed {
 			fmt.Printf("The provided encoder '%s' does not match any known encoder. Use handy -l to get a list of all valid encoder options.\n", encoder)
@@ -109,18 +125,256 @@ func main() {
 	}
 
 	if quality < 0 {
-		fmt.Printf("Invalid quality value detected. Setting to default value - %d\n", DEFAULT_QUALITY)
-		quality = DEFAULT_QUALITY
+		fmt.Printf("Invalid quality value detected. Setting to default value - %d\n", hb.DEFAULT_QUALITY)
+		quality = hb.DEFAULT_QUALITY
 	}
 
-	// _, err := exec.LookPath("HandBrakeCLI")
+	_, err := exec.LookPath("makemkvcon")
 
-	// if err != nil {
-	// 	fmt.Println("HandBrakeCLI not found in $PATH. Please install the HandBrakeCLI. Exiting.")
-	// 	return
-	// }
+	if err != nil {
+		fmt.Println("makemkvcon not found in $PATH. Please install the makemkvcon. Exiting.")
+		return
+	}
 
-	// config, err := readConfig()
+	_, err = exec.LookPath("HandBrakeCLI")
+
+	if err != nil {
+		fmt.Println("HandBrakeCLI not found in $PATH. Please install the HandBrakeCLI. Exiting.")
+		return
+	}
+
+	config, err := fs.ReadConfig()
+
+	if err != nil {
+		fmt.Printf("An error occurred reading config.\nError:%v\n", err)
+	}
+
+	fmt.Println()
+	logoText := "██╗  ██╗ █████╗ ███╗   ██╗██████╗ ██╗   ██╗\n"
+	logoText += "██║  ██║██╔══██╗████╗  ██║██╔══██╗╚██╗ ██╔╝\n"
+	logoText += "███████║███████║██╔██╗ ██║██║  ██║ ╚████╔╝ \n"
+	logoText += "██╔══██║██╔══██║██║╚██╗██║██║  ██║  ╚██╔╝  \n"
+	logoText += "██║  ██║██║  ██║██║ ╚████║██████╔╝   ██║   \n"
+	logoText += "╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═════╝    ╚═╝   \n"
+	logoText += "A MakeMKV + HandBrake productivity tool by Herbzy\n"
+
+	fmt.Printf("%s\n", logoText)
+
+	titles, err := mkv.GetTitlesFromDisc()
+
+	if err != nil {
+		fmt.Printf("An error occurred while reading titles from disc\nError: %v\n", err)
+	}
+
+	if len(titles) < 1 {
+		fmt.Printf("No titles could be read from disc. Exiting.\n")
+		return
+	}
+
+	fmt.Printf("The following titles were read from the disc: %s\n\n", titles[0].DiscTitle)
+
+	for _, title := range titles {
+		fmt.Printf("ID: %d, Title Name: %s, Size: %s, Length: %s\n", title.Index, title.FileName, title.FileSize, title.Length)
+	}
+
+	var titleSelections string
+
+	// Prompt the user for input
+	fmt.Print("\nEnter the IDs of the titles to process (0,1,2...) or enter 'all' to process all titles: \n\n")
+	fmt.Scanln(&titleSelections)
+
+	if titleSelections != "all" {
+		rawIds := strings.Split(titleSelections, ",")
+		selectedIds := make([]int, 0)
+
+		for _, rawIds := range rawIds {
+			id, err := strconv.Atoi(rawIds)
+
+			if err != nil {
+				fmt.Printf("Invalid title selection input detected. Exiting.\n")
+				return
+			}
+
+			selectedIds = append(selectedIds, id)
+		}
+
+		if len(selectedIds) < 1 {
+			fmt.Printf("No selected titles detected. Exiting.\n")
+			return
+		}
+
+		titles = slices.DeleteFunc(titles, func(x mkv.TitleInfo) bool {
+			for _, sd := range selectedIds {
+				if sd == x.Index {
+					return false
+				}
+			}
+
+			return true
+		})
+	}
+
+	if len(titles) < 1 {
+		fmt.Printf("No titles to process. Exiting.\n")
+		return
+	}
+
+	// Titles progress tracking
+	var progressLock sync.Mutex
+	progress := make([]*TitleStatus, len(titles))
+	for i, title := range titles {
+		progress[i] = &TitleStatus{
+			TitleIndex: title.Index,
+			Title:      title.FileName,
+			Ripping:    "Pending",
+			Encoding:   "Pending",
+		}
+	}
+
+	refreshDisplay := func() {
+		progressLock.Lock()
+		defer progressLock.Unlock()
+
+		fmt.Print("\033[H\033[2J") // Clear the terminal
+		fmt.Printf("%s\n", logoText)
+		fmt.Printf("%-30s%-20s%-20s\n", "Title", "Ripping", "Encoding")
+		fmt.Println(strings.Repeat("-", 70))
+
+		for _, status := range progress {
+			rippingColor := colorReset
+			encodingColor := colorReset
+
+			// Set color based on status
+			switch status.Ripping {
+			case "Pending":
+				rippingColor = colorYellow
+			case "In Progress":
+				rippingColor = colorBlue
+			case "Complete":
+				rippingColor = colorGreen
+			}
+
+			switch status.Encoding {
+			case "Pending":
+				encodingColor = colorYellow
+			case "In Progress":
+				encodingColor = colorBlue
+			case "Complete":
+				encodingColor = colorGreen
+			}
+
+			// Format and pad each column
+			titleCol := padString(status.Title, 30)
+			rippingCol := padString(colorize(status.Ripping, rippingColor), 20)
+			encodingCol := padString(colorize(status.Encoding, encodingColor), 20)
+
+			// Print the row
+			fmt.Printf("%s%s%s\n", titleCol, rippingCol, encodingCol)
+		}
+	}
+
+	fmt.Println()
+
+	ctx, cancelProcessing := context.WithCancel(context.Background())
+	var encChannel = make(chan hb.EncodingParams, 1)
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+
+	// MKV
+	go func() {
+		defer wg.Done()
+		defer close(encChannel)
+
+		for i, title := range titles {
+			// Update progress for ripping
+			progressLock.Lock()
+			progress[i].Ripping = "In Progress"
+			progressLock.Unlock()
+
+			ripErr := mkv.RipTitle(ctx, &title, config.MKVOutputDirectory)
+
+			if ripErr != nil {
+				fmt.Printf("An error occurred ripping title: %s\nError: %v\n", title.FileName, ripErr)
+				cancelProcessing()
+				return
+			}
+
+			// Update progress for ripping completion
+			progressLock.Lock()
+			progress[i].Ripping = "Complete"
+			progressLock.Unlock()
+
+			encChannel <- hb.EncodingParams{
+				TitleIndex:        title.Index,
+				InputFilePath:     fmt.Sprintf("%s/%s", config.MKVOutputDirectory, title.FileName),
+				OutputFilePath:    fmt.Sprintf("%s/%s", config.HBOutputDirectory, title.FileName),
+				Quality:           config.EncodeConfig.Quality,
+				Encoder:           config.EncodeConfig.Encoder,
+				SubtitleLanguages: config.EncodeConfig.SubtitleLanguages,
+				AudioLanguages:    config.EncodeConfig.AudioLanguages,
+			}
+		}
+	}()
+
+	// HB
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case params, ok := <-encChannel:
+				if !ok {
+					return
+				}
+
+				// Find the index of the title being encoded
+				var titleIndex int
+				for i, status := range progress {
+					if status.TitleIndex == params.TitleIndex {
+						titleIndex = i
+						break
+					}
+				}
+
+				// Update progress for encoding
+				progressLock.Lock()
+				progress[titleIndex].Encoding = "In Progress"
+				progressLock.Unlock()
+
+				encErr := hb.Encode(ctx, &params)
+
+				if encErr != nil {
+					fmt.Printf("An error occurred while encoding %s\nError: %v\n", params.InputFilePath, encErr)
+					cancelProcessing()
+					return
+				}
+
+				// Update progress for encoding completion
+				progressLock.Lock()
+				progress[titleIndex].Encoding = "Complete"
+				progressLock.Unlock()
+
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	// Periodically refresh the display to ensure updates
+	go func() {
+		for ctx.Err() == nil {
+			time.Sleep(500 * time.Millisecond)
+			refreshDisplay()
+		}
+	}()
+
+	wg.Wait()
+
+	refreshDisplay()
+
+	fmt.Printf("\nOperation Complete.\n")
 
 	// if err != nil {
 	// 	fmt.Printf("An error occurred while attempting to read from the config file.\nError: %v\n", err)
@@ -193,18 +447,18 @@ func main() {
 	// 	}
 	// }
 
-	app := tview.NewApplication()
-	nav := ui.NewNavigator(context.Background())
+	// app := tview.NewApplication()
+	// nav := ui.NewNavigator(context.Background())
 
-	homePage := &ui.HomePage{}
-	homePage.Setup(app, nav)
+	// homePage := ui.NewHomePage()
+	// homePage.Setup(app, nav)
 
-	// Start the application.
-	err := app.SetRoot(nav.Pages, true).Run()
+	// // Start the application.
+	// err := app.SetRoot(nav.Pages, true).Run()
 
-	if err != nil {
-		panic(err)
-	}
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	// totalBytesSaved := int64(0)
 	// overallStartTime := time.Now()
@@ -295,177 +549,4 @@ func main() {
 	// fmt.Printf("\nEncoding Tasks Complete: See results in the '%s' directory.\n", outputDirInfo.Name())
 	// fmt.Printf("Total Time Elapsed: %s\n", formatTimeElapsedString(totalDuration))
 	// fmt.Printf("Total Saved Space: %s\n", formatSavedSpace(totalBytesSaved))
-}
-
-// Formats the given size in bytes into a human-readable string (GB, MB, KB, or Bytes).
-func formatSavedSpace(bytes int64) string {
-	const (
-		KB = 1024
-		MB = KB * 1024
-		GB = MB * 1024
-	)
-
-	switch {
-	case bytes >= GB:
-		return fmt.Sprintf("%.2f GB", float64(bytes)/float64(GB))
-	case bytes >= MB:
-		return fmt.Sprintf("%.2f MB", float64(bytes)/float64(MB))
-	case bytes >= KB:
-		return fmt.Sprintf("%.2f KB", float64(bytes)/float64(KB))
-	default:
-		return fmt.Sprintf("%d Bytes", bytes)
-	}
-}
-
-func formatTimeElapsedString(m time.Duration) string {
-	minutes := int(math.Floor(m.Minutes()))
-	seconds := int(math.Floor(m.Seconds())) - (minutes * 60)
-	return fmt.Sprintf("%dm%ds", minutes, seconds)
-}
-
-type config struct {
-	Encoder string `json:"encoder"`
-	Quality int    `json:"quality"`
-}
-
-// Creates a config file with all global defaults. The file will be written to the current working directory.
-func createConfigFile() error {
-	var exists bool = true
-
-	fileInfo, err := os.Stat(fmt.Sprintf("./%s", CONFIG_FILE_NAME))
-
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			exists = false
-		} else {
-			fmt.Printf("An error occurred while scanning for a preexisting %s file.\n", CONFIG_FILE_NAME)
-			return err
-		}
-	}
-
-	if exists {
-		fmt.Printf("Skipping creation of config file. The file %s already exists.\n", fileInfo.Name())
-		return nil
-	}
-
-	defaultConfig := config{
-		Encoder: DEFAULT_ENCODER,
-		Quality: DEFAULT_QUALITY,
-	}
-
-	defaultConfigBytes, err := json.Marshal(&defaultConfig)
-
-	if err != nil {
-		return err
-	}
-
-	err = os.WriteFile(CONFIG_FILE_NAME, defaultConfigBytes, 0750)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Reads the config file and returns a config struct.
-// If the config file does not exist, it returns a config with global defaults.
-func readConfig() (*config, error) {
-	filePath := fmt.Sprintf("./%s", CONFIG_FILE_NAME)
-
-	// Check if the file exists
-	if _, err := os.Stat(filePath); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			// Config file does not exist, return default config
-			return &config{
-				Encoder: DEFAULT_ENCODER,
-				Quality: DEFAULT_QUALITY,
-			}, nil
-		}
-		// Some other error occurred
-		return nil, fmt.Errorf("error checking config file: %w", err)
-	}
-
-	// Read the file
-	fileData, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("error reading config file: %w", err)
-	}
-
-	// Unmarshal the file data into the config struct
-	var cfg config
-	err = json.Unmarshal(fileData, &cfg)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing config file: %w", err)
-	}
-
-	return &cfg, nil
-}
-
-// Takes in the list of directory names to create. Returns a full path to the input file and a full path to the output file.
-func createDirectories(dirNames ...string) error {
-	for _, dirName := range dirNames {
-		relativeDirString := fmt.Sprintf("./%s", dirName)
-
-		fileInfo, err := os.Stat(relativeDirString)
-
-		var exists bool = true
-
-		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				exists = false
-			} else {
-				fmt.Printf("An error occurred while scanning for a preexisting %s directory.\n", dirName)
-				return err
-			}
-		}
-
-		if exists {
-			fmt.Printf("Skipping creation of %s directory. Entry '%s' already exists.\n", dirName, fileInfo.Name())
-			continue
-		}
-
-		fmt.Printf("Creating %s directory...\n", dirName)
-
-		err = os.Mkdir(relativeDirString, 0755)
-
-		if err != nil {
-			fmt.Printf("An error occurred while creating %s directory.\n", dirName)
-			return err
-		}
-
-		fileInfo, err = os.Stat(relativeDirString)
-
-		if err != nil {
-			fmt.Printf("An error occurred while scanning for resulting %s directory.\n", dirName)
-			return err
-		}
-
-		fullPath, err := filepath.Abs(fileInfo.Name())
-
-		if err != nil {
-			fmt.Printf("An error occurred while reading the full path for resulting %s directory.\n", dirName)
-			return err
-		}
-
-		fmt.Printf("Created directory: %s\n", fullPath)
-	}
-
-	return nil
-}
-
-// Reads the size of the specified file and returns it in bytes.
-// If the file does not exist or an error occurs, it returns an error.
-func getFileSize(filePath string) (int64, error) {
-	// Get file info using os.Stat
-	fileInfo, err := os.Stat(filePath)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return 0, fmt.Errorf("file does not exist: %s", filePath)
-		}
-		return 0, fmt.Errorf("error retrieving file info: %w", err)
-	}
-
-	// Return the size of the file
-	return fileInfo.Size(), nil
 }

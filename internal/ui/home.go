@@ -6,9 +6,16 @@ import (
 )
 
 type HomePage struct {
+	Id HandyPage
 }
 
-func (*HomePage) Setup(app *tview.Application, nav *PageNavigator) {
+func NewHomePage() *HomePage {
+	return &HomePage{
+		Id: Welcome,
+	}
+}
+
+func (page *HomePage) Setup(app *tview.Application, nav *PageNavigator) {
 	grid := tview.NewGrid()
 
 	grid.SetRows(8, 8, 2, 8, 1, 1, 0).
@@ -96,5 +103,5 @@ func (*HomePage) Setup(app *tview.Application, nav *PageNavigator) {
 	grid.AddItem(logo, 1, 1, 1, 1, 0, 0, false).
 		AddItem(buttonGrid, 3, 1, 1, 1, 0, 0, true)
 
-	nav.Register(Welcome, grid, true, true, func(param interface{}) {}, nil)
+	nav.Register(page.Id, grid, true, true, func(param interface{}) {}, nil)
 }

@@ -11,6 +11,7 @@ type HandyPage int
 const (
 	Welcome HandyPage = iota
 	Config
+	TitleSelect
 )
 
 var pageNames = map[HandyPage]string{
