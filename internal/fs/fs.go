@@ -4,10 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/dmars8047/handy/internal/hb"
 )
@@ -15,12 +13,6 @@ import (
 const (
 	CONFIG_FILE_NAME = ".handy_config.json"
 )
-
-func FormatTimeElapsedString(m time.Duration) string {
-	minutes := int(math.Floor(m.Minutes()))
-	seconds := int(math.Floor(m.Seconds())) - (minutes * 60)
-	return fmt.Sprintf("%dm%ds", minutes, seconds)
-}
 
 // Formats the given size in bytes into a human-readable string (GB, MB, KB, or Bytes).
 func FormatSavedSpace(bytes int64) string {
@@ -198,4 +190,9 @@ func GetFileSize(filePath string) (int64, error) {
 
 	// Return the size of the file
 	return fileInfo.Size(), nil
+}
+
+// Deletes a file
+func DeleteFile(filePath string) error {
+	return os.Remove(filePath)
 }
