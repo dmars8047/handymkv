@@ -43,26 +43,45 @@ func colorize(text, color string) string {
 	return fmt.Sprintf("%s%s%s", color, text, colorReset)
 }
 
-var ansiEscape = regexp.MustCompile(`\x1b\[[0-9;]*m`) // Regex to match ANSI escape codes
+// Pad a string to a specific width, accounting for visible length.
+// Returns true if the given visible length of the string is longer than the width.
+func padString(s string, width int) (string, bool) {
+	var ansiEscape = regexp.MustCompile(`\x1b\[[0-9;]*m`) // Regex to match ANSI escape codes
 
-// Strip ANSI escape codes and return the visible width of the string
-func visibleWidth(s string) int {
-	return len(ansiEscape.ReplaceAllString(s, ""))
-}
+	// Strip ANSI escape codes and return the visible width of the string
+	visibleLen := len(ansiEscape.ReplaceAllString(s, ""))
 
-// Pad a string to a specific width, accounting for visible length
-func padString(s string, width int) string {
-	visibleLen := visibleWidth(s)
 	if visibleLen < width {
-		return s + strings.Repeat(" ", width-visibleLen)
+		return s + strings.Repeat(" ", width-visibleLen), false
 	}
-	return s
+
+	return s, visibleLen > width
 }
 
 func formatTimeElapsedString(m time.Duration) string {
 	minutes := int(math.Floor(m.Minutes()))
 	seconds := int(math.Floor(m.Seconds())) - (minutes * 60)
 	return fmt.Sprintf("%dm%ds", minutes, seconds)
+}
+
+// Formats the given size in bytes into a human-readable string (GB, MB, KB, or Bytes).
+func formatSavedSpace(bytes int64) string {
+	const (
+		KB = 1024
+		MB = KB * 1024
+		GB = MB * 1024
+	)
+
+	switch {
+	case bytes >= GB:
+		return fmt.Sprintf("%.2f GB", float64(bytes)/float64(GB))
+	case bytes >= MB:
+		return fmt.Sprintf("%.2f MB", float64(bytes)/float64(MB))
+	case bytes >= KB:
+		return fmt.Sprintf("%.2f KB", float64(bytes)/float64(KB))
+	default:
+		return fmt.Sprintf("%d Bytes", bytes)
+	}
 }
 
 func main() {
@@ -241,9 +260,11 @@ func main() {
 
 	processStartTime := time.Now()
 
-	refreshDisplay := func() {
+	refreshDisplay := func(changeFunc func()) {
 		progressLock.Lock()
 		defer progressLock.Unlock()
+
+		changeFunc()
 
 		fmt.Print("\033[H\033[2J") // Clear the terminal
 		fmt.Printf("%s\n", logoText)
@@ -274,9 +295,18 @@ func main() {
 			}
 
 			// Format and pad each column
-			titleCol := padString(status.Title, 30)
-			rippingCol := padString(colorize(status.Ripping, rippingColor), 20)
-			encodingCol := padString(colorize(status.Encoding, encodingColor), 20)
+			displayTitle := strings.TrimSuffix(status.Title, ".mkv")
+			titleCol, titleTooLong := padString(displayTitle, 30)
+			rippingCol, _ := padString(colorize(status.Ripping, rippingColor), 20)
+			encodingCol, _ := padString(colorize(status.Encoding, encodingColor), 20)
+
+			if titleTooLong {
+				titleSpillOver := titleCol[29:]
+				titleCol := titleCol[0:28]
+				fmt.Printf("%s%s%s\n", titleCol, rippingCol, encodingCol)
+				fmt.Printf("%s\n", titleSpillOver)
+				return
+			}
 
 			// Print the row
 			fmt.Printf("%s%s%s\n", titleCol, rippingCol, encodingCol)
@@ -297,11 +327,12 @@ func main() {
 		defer close(encChannel)
 
 		for i, title := range titles {
-			// Update progress for ripping
-			progressLock.Lock()
-			progress[i].Ripping = "In Progress"
-			progressLock.Unlock()
-			refreshDisplay()
+			applyInProgressChangeFunc := func() {
+				// Update progress for ripping
+				progress[i].Ripping = "In Progress"
+			}
+
+			refreshDisplay(applyInProgressChangeFunc)
 
 			ripErr := mkv.RipTitle(ctx, &title, config.MKVOutputDirectory)
 
@@ -312,15 +343,19 @@ func main() {
 			}
 
 			// Update progress for ripping completion
-			progressLock.Lock()
-			progress[i].Ripping = "Complete"
-			progressLock.Unlock()
-			refreshDisplay()
+			applyCompletedChangeFunc := func() {
+				progress[i].Ripping = "Complete"
+			}
+
+			refreshDisplay(applyCompletedChangeFunc)
+
+			// Replace spaces with underscores for encoding run.
+			encodingOutputFileName := strings.ReplaceAll(title.FileName, " ", "_")
 
 			encChannel <- hb.EncodingParams{
 				TitleIndex:        title.Index,
 				InputFilePath:     fmt.Sprintf("%s/%s", config.MKVOutputDirectory, title.FileName),
-				OutputFilePath:    fmt.Sprintf("%s/%s", config.HBOutputDirectory, title.FileName),
+				OutputFilePath:    fmt.Sprintf("%s/%s", config.HBOutputDirectory, encodingOutputFileName),
 				Quality:           config.EncodeConfig.Quality,
 				Encoder:           config.EncodeConfig.Encoder,
 				SubtitleLanguages: config.EncodeConfig.SubtitleLanguages,
@@ -351,10 +386,11 @@ func main() {
 				}
 
 				// Update progress for encoding
-				progressLock.Lock()
-				progress[titleIndex].Encoding = "In Progress"
-				progressLock.Unlock()
-				refreshDisplay()
+				applyInProgressChangeFunc := func() {
+					progress[titleIndex].Encoding = "In Progress"
+				}
+
+				refreshDisplay(applyInProgressChangeFunc)
 
 				encErr := hb.Encode(ctx, &params)
 
@@ -365,24 +401,17 @@ func main() {
 				}
 
 				// Update progress for encoding completion
-				progressLock.Lock()
-				progress[titleIndex].Encoding = "Complete"
-				progressLock.Unlock()
-				refreshDisplay()
+				applyCompletedChangeFunc := func() {
+					progress[titleIndex].Encoding = "Complete"
+				}
+
+				refreshDisplay(applyCompletedChangeFunc)
 
 			case <-ctx.Done():
 				return
 			}
 		}
 	}()
-
-	// Periodically refresh the display to ensure updates
-	// go func() {
-	// 	for ctx.Err() == nil {
-	// 		time.Sleep(500 * time.Millisecond)
-	// 		refreshDisplay()
-	// 	}
-	// }()
 
 	wg.Wait()
 
@@ -407,7 +436,7 @@ func main() {
 
 		totalSizeRaw += rawFileSize
 
-		encodedFilePath := fmt.Sprintf("%s/%s", config.HBOutputDirectory, title.FileName)
+		encodedFilePath := fmt.Sprintf("%s/%s", config.HBOutputDirectory, strings.ReplaceAll(title.FileName, " ", "_"))
 
 		encodedFileSize, err := fs.GetFileSize(encodedFilePath)
 
@@ -419,9 +448,9 @@ func main() {
 		totalSizeEncoded += encodedFileSize
 	}
 
-	fmt.Printf("\nTotal size of raw unencoded files: %s\n", fs.FormatSavedSpace(totalSizeRaw))
-	fmt.Printf("Total size of encoded files: %s\n", fs.FormatSavedSpace(totalSizeEncoded))
-	fmt.Printf("Total disk space saved via encoding: %s\n", fs.FormatSavedSpace(totalSizeRaw-totalSizeEncoded))
+	fmt.Printf("\nTotal size of raw unencoded files: %s\n", formatSavedSpace(totalSizeRaw))
+	fmt.Printf("Total size of encoded files: %s\n", formatSavedSpace(totalSizeEncoded))
+	fmt.Printf("Total disk space saved via encoding: %s\n", formatSavedSpace(totalSizeRaw-totalSizeEncoded))
 
 	fmt.Printf("\nDelete raw unencoded files? (y/N)\n\n")
 
