@@ -1,4 +1,4 @@
-package mkv
+package hnd
 
 import (
 	"context"
@@ -60,11 +60,11 @@ func RipTitle(ctx context.Context, title *TitleInfo, destDir string) error {
 	return nil
 }
 
-func GetTitlesFromDisc() ([]TitleInfo, error) {
+func getTitlesFromDisc(discId int) ([]TitleInfo, error) {
 	titles := make([]TitleInfo, 0)
 
 	// Run the command to get the output
-	cmdOut, err := exec.Command("sh", "-c", "makemkvcon -r info disc:0").Output()
+	cmdOut, err := exec.Command("sh", "-c", fmt.Sprintf("makemkvcon -r info disc:%d", discId)).Output()
 
 	if err != nil {
 		return titles, fmt.Errorf("error running command: %v", err)
