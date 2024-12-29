@@ -1,7 +1,7 @@
-package hnd
+package handy
 
 /*
-Package hnd provides provides the bulk of the functionality for the Handy application.
+Package handy provides provides the bulk of the functionality for the Handy application.
 
 # Overview
 

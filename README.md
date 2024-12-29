@@ -65,7 +65,7 @@ Handy has a number of command line options that can be used to control its behav
   -q int
         Quality.
                 Sets the quality value to be used for each encoding task. If not provided then the value will be read from the 'config.json' file.
-                If the config file cannot be found then then a default value of '20' will be used. (default -1)
+                If the config file cannot be found a default value of '20' will be used. (default -1)
 ```
 
 ## Installation
@@ -76,7 +76,32 @@ Handy is a Go application and can be installed using the following command:
 go install github.com/dmars8047/handy/cmd/handy@latest
 ```
 
-Pre-built binaries can be downloaded from the [here](https://marshall-labs.com/handy/releases/latest) page.
+Pre-built binaries can be downloaded from the [releases](https://marshall-labs.com/handy/releases/latest) page.
+
+## Basic Usage
+
+The first step is to create a configuration file. This can be done by running the following command:
+
+```shell
+handy -c
+```
+
+This will start the configuration wizard. It will prompt you for encode settings and various operational settings. Once saved, the configuration will be stored in a file called `config.json`. The location of that file depends on whether user-wide or directory-wide configuration is used.
+
+- On Unix systems, the user-wide configuration file is stored at '~/.config/handy/config.json'.
+- On Windows systems, the user-wide configuration file is stored at '%APPDATA%\handy\config.json'.
+
+Then to rip and encode a disc, run the following command:
+
+```shell
+handy
+```
+
+This will first read the titles on the disc and prompt you to select which titles to rip. Once you have selected the titles to rip, the process will begin. The progress of the process will be displayed in the terminal. Once the process is complete, a summary will be displayed showing the space saved and the time taken to complete the process.
+
+All output files will be stored in the directory specified in the configuration file.
+
+Note: If there is a `config.json` file in the working directory at execution time, that file will be used instead of the user-wide configuration file.
 
 ## A Note on Concurrency
 

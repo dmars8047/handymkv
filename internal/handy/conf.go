@@ -1,4 +1,4 @@
-package hnd
+package handy
 
 import (
 	"encoding/json"
@@ -151,4 +151,77 @@ func CreateConfigFile(location ConfigFileLocation, config *HandyConfig, overwrit
 	}
 
 	return nil
+}
+
+// Prompts the user for configuration values and returns a new HandyConfig object.
+func promptForConfig(locationSelection int) *HandyConfig {
+	var config HandyConfig
+
+	clear()
+	fmt.Printf("You will now answer a series of questions to provide default values for your configuration. Press enter to select the indicated default. For more information, please consult the project documentation.\n\n(Press enter to continue)\n\n")
+
+	// Press enter to continue
+	fmt.Scanln()
+	clear()
+
+	config.EncodeConfig.Encoder = promptForString("What encoder should be used by default?", "", defaultEncoder, possibleEncoderValues)
+	clear()
+	config.EncodeConfig.Quality = promptForInt("What should the default quality be set to?", "", defaultQuality)
+	clear()
+
+	config.EncodeConfig.AudioLanguages = promptForStringSlice("What audio languages should be included in encoded output files?",
+		"Provide a comma delimited list of ISO 639-2 strings. Example: eng,jpn",
+		"any")
+
+	clear()
+
+	config.EncodeConfig.IncludeAllRelevantAudio = promptForBool("Include all relevant audio tracks in encoded output files?",
+		"Some discs contain multiple audio tracks in the same language. If this option is enabled, all audio tracks in the same language will be included in the encoded output files. If this option is disabled, only the first audio track in the specified language will be included.",
+		false)
+
+	clear()
+
+	config.EncodeConfig.SubtitleLanguages = promptForStringSlice("What subtitle languages should be included in encoded output files?",
+		"Provide a comma delimited list of ISO 639-2 strings. Example: eng,jpn",
+		"eng")
+	clear()
+
+	config.EncodeConfig.IncludeAllRelevantSubtitles = promptForBool("Include all relevant subtitle tracks in encoded output files?",
+		"Some discs contain multiple subtitle tracks in the same language. If this option is enabled, all subtitle tracks in the same language will be included in the encoded output files.",
+		false)
+	clear()
+
+	var handyDir string
+
+	if locationSelection == 1 {
+		// Get logged in user's home directory
+		usr, err := user.Current()
+
+		if err != nil {
+			fmt.Printf("Error getting current user: %v\n", err)
+		}
+
+		handyDir = filepath.Join(usr.HomeDir, "handy")
+	} else {
+		handyDir = "."
+	}
+
+	defaultMKVOutputDirectory := filepath.Join(handyDir, "mkvoutput")
+
+	config.MKVOutputDirectory = promptForString("Provide a path to a directory that raw unencoded MKV files can be staged.",
+		fmt.Sprintf("Absolute path to a directory. Example: %s", defaultMKVOutputDirectory),
+		defaultMKVOutputDirectory,
+		nil)
+
+	clear()
+
+	defaultHBOutputDirectory := filepath.Join(handyDir, "hboutput")
+
+	config.HBOutputDirectory = promptForString("Provide a path to a directory that HandBrake encoded output files can be placed. Using the same directory as the MKV output directory is not recommended.",
+		fmt.Sprintf("Absolute path to a directory. Example: %s", defaultHBOutputDirectory),
+		defaultHBOutputDirectory, nil)
+
+	clear()
+
+	return &config
 }

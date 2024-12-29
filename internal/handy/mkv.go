@@ -1,4 +1,4 @@
-package hnd
+package handy
 
 import (
 	"context"
@@ -43,7 +43,7 @@ type TitleInfo struct {
 	FileName  string
 }
 
-func RipTitle(ctx context.Context, title *TitleInfo, destDir string) error {
+func ripTitle(ctx context.Context, title *TitleInfo, destDir string) error {
 
 	cmdOut, err := exec.CommandContext(ctx, "sh", "-c", fmt.Sprintf("makemkvcon mkv disc:0 %d %s", title.Index, destDir)).Output()
 
@@ -123,4 +123,31 @@ func getTitlesFromDisc(discId int) ([]TitleInfo, error) {
 	})
 
 	return titles, nil
+}
+
+func getTitles(discId int) ([]TitleInfo, error) {
+	titles, err := getTitlesFromDisc(discId)
+
+	if err != nil {
+		return titles, fmt.Errorf("an error occurred while reading titles from disc: %w", err)
+	}
+
+	if len(titles) < 1 {
+		return titles, ErrTitlesDiscRead
+	}
+
+	return titles, nil
+}
+
+func promptUserForDeletion() bool {
+	var confirmDeleteString string
+
+	fmt.Printf("\nDelete raw unencoded files? [y/N]\n\n")
+
+	fmt.Scanln(&confirmDeleteString)
+	fmt.Println()
+
+	confirmDeleteString = strings.TrimSpace(strings.ToLower(confirmDeleteString))
+
+	return strings.ToLower(confirmDeleteString) == "y"
 }

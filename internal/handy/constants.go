@@ -1,17 +1,15 @@
-package hnd
+package handy
 
 import (
 	"errors"
 )
 
 const (
-	INPUT_DIR_NAME  = "Input"
-	OUTPUT_DIR_NAME = "Output"
-	DEFAULT_QUALITY = 20     // 18
-	DEFAULT_ENCODER = "h264" //nvenc_h264
+	defaultQuality = 20     // 18
+	defaultEncoder = "h264" //nvenc_h264
 )
 
-var PossibleEncoderValues map[string]struct{} = map[string]struct{}{
+var possibleEncoderValues map[string]struct{} = map[string]struct{}{
 	"svt_av1":          {},
 	"svt_av1_10bit":    {},
 	"x264":             {},

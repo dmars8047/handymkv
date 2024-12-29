@@ -1,4 +1,4 @@
-package hnd
+package handy
 
 import (
 	"errors"
@@ -20,4 +20,17 @@ func GetFileSize(filePath string) (int64, error) {
 
 	// Return the size of the file
 	return fileInfo.Size(), nil
+}
+
+func deleteRawFiles(config *HandyConfig) {
+	fmt.Printf("Deleting raw unencoded files...\n\n")
+
+	// Delete entire MKV output directory
+	err := os.RemoveAll(config.MKVOutputDirectory)
+
+	if err != nil {
+		fmt.Printf("An error occurred while deleting the MKV output directory: %v\n", err)
+	}
+
+	fmt.Printf("Raw unencoded files deleted.\n")
 }

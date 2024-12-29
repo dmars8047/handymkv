@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/dmars8047/handy/internal/hnd"
+	"github.com/dmars8047/handy/internal/handy"
 )
 
 func main() {
@@ -16,24 +16,20 @@ func main() {
 
 	configFlag := flag.Bool("c", false, "Config. Runs the configuration wizard.")
 
-	flag.IntVar(&quality, "q", -1, fmt.Sprintf(`Quality. 
-	Sets the quality value to be used for each encoding task. If not provided then the value will be read from the '%s' file. 
-	If the config file cannot be found then then a default value of '%d' will be used.`, hnd.CONFIG_FILE_NAME, hnd.DEFAULT_QUALITY))
+	flag.IntVar(&quality, "q", -1, "Quality. Sets the quality value to be used for each encoding task. If not provided then the value will be read from cofnig file.")
 
-	flag.StringVar(&encoder, "e", "", fmt.Sprintf(`Encoder. 
-	If not provided then the value will be read from the '%s' file. 
-	If the config file cannot be found then then a default value of '%s' will be used.`, hnd.CONFIG_FILE_NAME, hnd.DEFAULT_ENCODER))
+	flag.StringVar(&encoder, "e", "", "Encoder. If not provided then the value will be read from the config file.")
 
 	flag.IntVar(&discId, "d", 0, "Disc. The disc index to rip. If not provided then disc 0 will be ripped.")
 
 	flag.Parse()
 
-	hnd.PrintLogo()
+	handy.PrintLogo()
 
 	setup := *configFlag
 
 	if setup {
-		err := hnd.Setup()
+		err := handy.Setup()
 
 		if err != nil {
 			fmt.Printf("An error occurred during the setup process.\nError: %v\n", err)
@@ -49,13 +45,13 @@ func main() {
 		return
 	}
 
-	err = hnd.Exec(discId, quality, encoder)
+	err = handy.Exec(discId, quality, encoder)
 
 	if err != nil {
-		if err == hnd.ErrConfigNotFound {
+		if err == handy.ErrConfigNotFound {
 			fmt.Printf("Config file not found. Please run the configuration wizard with 'handy -c'.\n\n")
 			return
-		} else if err == hnd.ErrTitlesDiscRead {
+		} else if err == handy.ErrTitlesDiscRead {
 			fmt.Printf("An error occurred while reading titles from disc %d. Please ensure the disc is inserted and try again.\n\n", discId)
 			return
 		}

@@ -1,4 +1,4 @@
-package hnd
+package handy
 
 import (
 	"context"
