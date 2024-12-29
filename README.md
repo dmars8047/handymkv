@@ -55,17 +55,14 @@ Documentation for Handbrake can be found [here](https://handbrake.fr/docs/en/lat
 Handy has a number of command line options that can be used to control its behaviour. These options are described below.
 
 ```shell
+Usage of handy:
   -c    Config. Runs the configuration wizard.
   -d int
         Disc. The disc index to rip. If not provided then disc 0 will be ripped.
   -e string
-        Encoder.
-                If not provided then the value will be read from the 'config.json' file.
-                If the config file cannot be found then then a default value of 'h264' will be used.
+        Encoder. If not provided then the value will be read from the config file.
   -q int
-        Quality.
-                Sets the quality value to be used for each encoding task. If not provided then the value will be read from the 'config.json' file.
-                If the config file cannot be found a default value of '20' will be used. (default -1)
+        Quality. Sets the quality value to be used for each encoding task. If not provided then the value will be read from cofnig file.
 ```
 
 ## Installation
