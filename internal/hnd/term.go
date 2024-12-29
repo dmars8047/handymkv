@@ -36,7 +36,7 @@ func clear() {
 
 // colorize wraps a string in the specified color
 func colorize(text statusValue, color string) string {
-	return fmt.Sprintf("%s%s%s", color, text, colorReset)
+	return fmt.Sprintf("%s%s%s", color, text.String(), colorReset)
 }
 
 // Pad a string to a specific width, accounting for visible length.

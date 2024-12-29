@@ -56,6 +56,29 @@ func Exec(discId int, quality int, encoder string) error {
 		return err
 	}
 
+	if len(titles) < 1 {
+		return ErrTitlesDiscRead
+	}
+
+	// Create output directory dirSlug with timestamp
+	dirSlug := fmt.Sprintf("handy_%s", time.Now().Format("2006-01-02_15-04-05"))
+
+	config.MKVOutputDirectory = filepath.Join(config.MKVOutputDirectory, dirSlug)
+
+	err = os.MkdirAll(config.MKVOutputDirectory, 0740)
+
+	if err != nil {
+		return fmt.Errorf("an error occurred while creating the mkv output directory: %w", err)
+	}
+
+	config.HBOutputDirectory = filepath.Join(config.HBOutputDirectory, dirSlug)
+
+	err = os.MkdirAll(config.HBOutputDirectory, 0740)
+
+	if err != nil {
+		return fmt.Errorf("an error occurred while creating the handbrake output directory: %w", err)
+	}
+
 	fmt.Printf("The following titles were read from the disc: %s\n\n", titles[0].DiscTitle)
 
 	for _, title := range titles {
@@ -106,7 +129,7 @@ func Exec(discId int, quality int, encoder string) error {
 
 	// Titles progress tracking
 	tracker := progressTracker{
-		statuses: make(map[int]titleStatus, len(titles)),
+		statuses: make([]titleStatus, len(titles)),
 	}
 
 	for _, title := range titles {
@@ -229,9 +252,14 @@ func Exec(discId int, quality int, encoder string) error {
 	fmt.Printf("Total size of encoded files: %s\n", formatSavedSpace(totalSizeEncoded))
 	fmt.Printf("Total disk space saved via encoding: %s\n", formatSavedSpace(totalSizeRaw-totalSizeEncoded))
 
-	if !promptUserForDeletion() {
-		deleteRawFiles(titles, config)
+	shouldDelete := promptUserForDeletion()
+
+	if shouldDelete {
+		deleteRawFiles(config)
 	}
+
+	// Tell the user where the encoded files are located
+	fmt.Printf("\nEncoded files are located in: %s\n\n", config.HBOutputDirectory)
 
 	return nil
 }
@@ -239,7 +267,7 @@ func Exec(discId int, quality int, encoder string) error {
 // Keeps track of the progress of the ripping and encoding processes.
 // Outputs the progress to the terminal.
 type progressTracker struct {
-	statuses map[int]titleStatus
+	statuses []titleStatus
 	mutex    sync.Mutex
 	err      error
 }
@@ -282,9 +310,12 @@ func (pt *progressTracker) applyChangeAndDisplay(titleIndex int, applyChangeFunc
 	pt.mutex.Lock()
 	defer pt.mutex.Unlock()
 
-	var titleStatus titleStatus = pt.statuses[titleIndex]
-
-	applyChangeFunc(&titleStatus)
+	for i, status := range pt.statuses {
+		if status.TitleIndex == titleIndex {
+			applyChangeFunc(&pt.statuses[i])
+			break
+		}
+	}
 
 	pt.refreshDisplay()
 }
@@ -345,10 +376,6 @@ func getTitles(discId int) ([]TitleInfo, error) {
 		return titles, fmt.Errorf("an error occurred while reading titles from disc: %w", err)
 	}
 
-	if len(titles) < 1 {
-		return titles, fmt.Errorf("no titles could be read from disc")
-	}
-
 	return titles, nil
 }
 
@@ -377,24 +404,27 @@ func calculateTotalSizes(titles []TitleInfo, config *HandyConfig) (int64, int64,
 func promptUserForDeletion() bool {
 	var confirmDeleteString string
 
-	fmt.Printf("\nDelete raw unencoded files? (y/N)\n\n")
+	fmt.Printf("\nDelete raw unencoded files? [y/N]\n\n")
 
 	fmt.Scanln(&confirmDeleteString)
 	fmt.Println()
 
+	confirmDeleteString = strings.TrimSpace(strings.ToLower(confirmDeleteString))
+
 	return strings.ToLower(confirmDeleteString) == "y"
 }
 
-func deleteRawFiles(titles []TitleInfo, config *HandyConfig) {
-	for _, title := range titles {
-		filePath := filepath.Join(config.MKVOutputDirectory, title.FileName)
+func deleteRawFiles(config *HandyConfig) {
+	fmt.Printf("Deleting raw unencoded files...\n\n")
 
-		fmt.Printf("Deleting %s\n", filePath)
+	// Delete entire MKV output directory
+	err := os.RemoveAll(config.MKVOutputDirectory)
 
-		if err := os.Remove(filePath); err != nil {
-			fmt.Printf("An error occurred while deleting %s - Error: %v\n", filePath, err)
-		}
+	if err != nil {
+		fmt.Printf("An error occurred while deleting the MKV output directory: %v\n", err)
 	}
+
+	fmt.Printf("Raw unencoded files deleted.\n")
 }
 
 // Prompts the user to create a configuration file.
@@ -427,7 +457,7 @@ func Setup() error {
 	for {
 		config = promptForConfig(configLocationSelection)
 		fmt.Printf("\n%s\n", config.String())
-		fmt.Printf("Accept these settings? [Y/N]\n\n")
+		fmt.Printf("Accept these settings? [y/N]\n\n")
 
 		var choice string
 		fmt.Scanln(&choice)

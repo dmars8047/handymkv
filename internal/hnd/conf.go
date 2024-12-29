@@ -128,7 +128,7 @@ func CreateConfigFile(location ConfigFileLocation, config *HandyConfig, overwrit
 
 	// Check if the config file already exists
 	if _, err := os.Stat(configPath); err == nil && !overwrite {
-		fmt.Printf("\nA config file already exists at %s. Overwrite? [y/n]\n\n", configPath)
+		fmt.Printf("\nA config file already exists at %s. Overwrite? [y/N]\n\n", configPath)
 		var choice string
 		fmt.Scanln(&choice)
 		if strings.ToLower(choice) != "y" {

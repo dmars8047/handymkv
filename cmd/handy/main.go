@@ -51,7 +51,15 @@ func main() {
 	err = hnd.Exec(discId, quality, encoder)
 
 	if err != nil {
-		fmt.Printf("An error occurred during handy execution process.\nError %v\n", err)
+		if err == hnd.ErrConfigNotFound {
+			fmt.Printf("Config file not found. Please run the configuration wizard with 'handy -c'.\n\n")
+			return
+		} else if err == hnd.ErrTitlesDiscRead {
+			fmt.Printf("An error occurred while reading titles from disc %d. Please ensure the disc is inserted and try again.\n\n", discId)
+			return
+		}
+
+		fmt.Printf("An error occurred during handy execution process.\n\nError %v\n\n", err)
 	}
 }
 
