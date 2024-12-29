@@ -10,10 +10,9 @@ Handy is a tool that is designed to automate the process of ripping discs using 
 - Encode video files using HandBrake
 - Flexible configuration options
 - Clear and concise progress display
-
-### Concurrency
-
-Handy will attempt to execute tasks concurrently to reduce the overall time taken to complete the process. Opportunities for concurrency are limited by the dependencies between tasks, for example, encoding cannot begin until ripping is complete. Encoding tasks also tend to be resource intensive so the number of concurrent encoding tasks is limited to avoid overloading the system. When a ripping task is complete, it will be handed off the next available encoding task. This process will continue until all indicated titles have been ripped and encoded.
+- Concurrency to reduce overall time
+- Summary of space saved and time elapsed
+- Automated cleanup (after prompt) of raw unencoded files
 
 ## Objectives
 
@@ -68,3 +67,17 @@ Handy has a number of command line options that can be used to control its behav
                 Sets the quality value to be used for each encoding task. If not provided then the value will be read from the 'config.json' file.
                 If the config file cannot be found then then a default value of '20' will be used. (default -1)
 ```
+
+## Installation
+
+Handy is a Go application and can be installed using the following command:
+
+```shell
+go install github.com/dmars8047/handy/cmd/handy@latest
+```
+
+Pre-built binaries can be downloaded from the [here]('https://marshall-labs.com/handy/releases/latest') page.
+
+## A Note on Concurrency
+
+Handy will attempt to execute tasks concurrently to reduce the overall time taken to complete the process. Opportunities for concurrency are limited by the dependencies between tasks, for example, encoding cannot begin until ripping is complete. Encoding tasks also tend to be resource intensive so the number of concurrent encoding tasks is limited to avoid overloading the system. When a ripping task is complete, it will be handed off the next available encoding task. This process will continue until all indicated titles have been ripped and encoded.
