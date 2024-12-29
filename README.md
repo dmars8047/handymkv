@@ -1,6 +1,6 @@
 # Handy
 
-
+A MakeMKV + HandBrake productivity tool.
 
 ## Description
 
@@ -14,7 +14,7 @@ Handy is a tool that is designed to automate the process of ripping discs using 
 - Clear and concise progress display
 - Concurrency to reduce overall time
 - Summary of space saved and time elapsed
-- Automated cleanup (after prompt) of raw unencoded files
+- Automated cleanup of raw unencoded files
 
 ## Objectives
 
