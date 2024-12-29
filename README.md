@@ -42,7 +42,7 @@ Specifically the `makemkvcon` command is used to interact with MakeMKV from the 
 
 MakeMKV can be downloaded from [here](https://www.makemkv.com/).
 
-Documentation for MakeMKV can be found [here](https://www.makemkv.com/developers/usage.txt).
+Documentation for makemkvcon can be found [here](https://www.makemkv.com/developers/usage.txt).
 
 ### Handbrake
 
