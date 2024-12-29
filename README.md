@@ -76,7 +76,7 @@ Handy is a Go application and can be installed using the following command:
 go install github.com/dmars8047/handy/cmd/handy@latest
 ```
 
-Pre-built binaries can be downloaded from the [here]('https://marshall-labs.com/handy/releases/latest') page.
+Pre-built binaries can be downloaded from the [here](https://marshall-labs.com/handy/releases/latest) page.
 
 ## A Note on Concurrency
 
