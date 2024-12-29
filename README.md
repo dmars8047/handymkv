@@ -6,21 +6,10 @@ Handy is a tool that is designed to automate the process of ripping discs using 
 
 ## Features
 
-### Ripping
-
-Handy can rip the contents of a disc to a file on the local system. The user can select which titles to rip from the disc. Handy will then rip the selected titles to the local system.
-
-### Encoding
-
-Handy can encode the ripped files using Handbrake. The most common encoding options are exposed to the user.
-
-### Configuration
-
-Handy uses a configuration file to store the settings for ripping and encoding. This configuration file can be easily edited by hand or through the use of a configuration editor.
-
-### Progress
-
-Handy will display the progress of the ripping and encoding tasks.
+- Rip titles from discs using MakeMKV
+- Encode video files using HandBrake
+- Flexible configuration options
+- Clear and concise progress display
 
 ### Concurrency
 
