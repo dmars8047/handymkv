@@ -30,12 +30,6 @@ func main() {
 
 	hnd.PrintLogo()
 
-	err := checkForPrerequisites()
-
-	if err != nil {
-		fmt.Printf("Prerequisite not found or inaccessible.\n Exiting.\n")
-	}
-
 	setup := *configFlag
 
 	if setup {
@@ -45,6 +39,13 @@ func main() {
 			fmt.Printf("An error occurred during the setup process.\nError: %v\n", err)
 		}
 
+		return
+	}
+
+	err := checkForPrerequisites()
+
+	if err != nil {
+		fmt.Printf("Prerequisite not found or inaccessible. Make sure makemkvcon and HandBrakeCLI are accessible via the PATH.\nExiting.\n")
 		return
 	}
 
