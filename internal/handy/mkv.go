@@ -138,16 +138,3 @@ func getTitles(discId int) ([]TitleInfo, error) {
 
 	return titles, nil
 }
-
-func promptUserForDeletion() bool {
-	var confirmDeleteString string
-
-	fmt.Printf("\nDelete raw unencoded files? [y/N]\n\n")
-
-	fmt.Scanln(&confirmDeleteString)
-	fmt.Println()
-
-	confirmDeleteString = strings.TrimSpace(strings.ToLower(confirmDeleteString))
-
-	return strings.ToLower(confirmDeleteString) == "y"
-}

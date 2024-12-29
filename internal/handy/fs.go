@@ -8,7 +8,7 @@ import (
 
 // Reads the size of the specified file and returns it in bytes.
 // If the file does not exist or an error occurs, it returns an error.
-func GetFileSize(filePath string) (int64, error) {
+func getFileSize(filePath string) (int64, error) {
 	// Get file info using os.Stat
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
@@ -22,7 +22,7 @@ func GetFileSize(filePath string) (int64, error) {
 	return fileInfo.Size(), nil
 }
 
-func deleteRawFiles(config *HandyConfig) {
+func deleteRawFiles(config *handyConfig) {
 	fmt.Printf("Deleting raw unencoded files...\n\n")
 
 	// Delete entire MKV output directory

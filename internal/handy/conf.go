@@ -12,26 +12,27 @@ import (
 )
 
 const (
-	System ConfigFileLocation = iota
+	System configFileLocation = iota
 	User
 	WorkingDirectory
 )
 
 const (
-	CONFIG_FILE_NAME = "config.json"
+	configFileName = "config.json"
 )
 
 var ErrConfigNotFound = errors.New("config file not found")
 
-type ConfigFileLocation int
+type configFileLocation int
 
-type HandyConfig struct {
+type handyConfig struct {
 	EncodeConfig       EncodingParams `json:"encoding_params"`
 	MKVOutputDirectory string         `json:"mkv_output_directory"`
 	HBOutputDirectory  string         `json:"handbrake_output_directory"`
+	DeleteRawMKVFiles  bool           `json:"delete_raw_mkv_files"`
 }
 
-func (config *HandyConfig) String() string {
+func (config *handyConfig) String() string {
 	var sb strings.Builder
 
 	sb.WriteString("Encode Settings\n\n")
@@ -45,6 +46,7 @@ func (config *HandyConfig) String() string {
 	sb.WriteString("Output Directories\n\n")
 	sb.WriteString(fmt.Sprintf("MKV Output Directory: %s\n", config.MKVOutputDirectory))
 	sb.WriteString(fmt.Sprintf("HandBrake Output Directory: %s\n", config.HBOutputDirectory))
+	sb.WriteString(fmt.Sprintf("Automatically Delete Raw MKV Files: %t\n", config.DeleteRawMKVFiles))
 
 	return sb.String()
 }
@@ -55,20 +57,20 @@ func getUserConfigPath() (string, error) {
 		if appData == "" {
 			return "", fmt.Errorf("APPDATA environment variable is not set")
 		}
-		return filepath.Join(appData, "handy", CONFIG_FILE_NAME), nil
+		return filepath.Join(appData, "handy", configFileName), nil
 	} else {
 		usr, err := user.Current()
 		if err != nil {
 			return "", fmt.Errorf("error getting current user: %w", err)
 		}
-		return filepath.Join(usr.HomeDir, ".config", "handy", CONFIG_FILE_NAME), nil
+		return filepath.Join(usr.HomeDir, ".config", "handy", configFileName), nil
 	}
 }
 
 // Reads the config file and returns a config struct.
-func ReadConfig() (*HandyConfig, error) {
+func ReadConfig() (*handyConfig, error) {
 	// Check in the current working directory
-	filePath := fmt.Sprintf("./%s", CONFIG_FILE_NAME)
+	filePath := fmt.Sprintf("./%s", configFileName)
 	if _, err := os.Stat(filePath); err == nil {
 		return readConfigFile(filePath)
 	}
@@ -86,13 +88,13 @@ func ReadConfig() (*HandyConfig, error) {
 }
 
 // Helper function to read and unmarshal the config file
-func readConfigFile(filePath string) (*HandyConfig, error) {
+func readConfigFile(filePath string) (*handyConfig, error) {
 	fileData, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("error reading config file: %w", err)
 	}
 
-	var cfg HandyConfig
+	var cfg handyConfig
 	err = json.Unmarshal(fileData, &cfg)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing config file: %w", err)
@@ -102,7 +104,7 @@ func readConfigFile(filePath string) (*HandyConfig, error) {
 }
 
 // Creates a config file with all global defaults. The file will be written to the specified location.
-func CreateConfigFile(location ConfigFileLocation, config *HandyConfig, overwrite bool) error {
+func createConfigFile(location configFileLocation, config *handyConfig, overwrite bool) error {
 	var configPath string
 
 	switch location {
@@ -116,7 +118,7 @@ func CreateConfigFile(location ConfigFileLocation, config *HandyConfig, overwrit
 			return err
 		}
 	case WorkingDirectory:
-		configPath = fmt.Sprintf("./%s", CONFIG_FILE_NAME)
+		configPath = fmt.Sprintf("./%s", configFileName)
 	default:
 		return fmt.Errorf("unknown config file location")
 	}
@@ -154,8 +156,8 @@ func CreateConfigFile(location ConfigFileLocation, config *HandyConfig, overwrit
 }
 
 // Prompts the user for configuration values and returns a new HandyConfig object.
-func promptForConfig(locationSelection int) *HandyConfig {
-	var config HandyConfig
+func promptForConfig(locationSelection int) *handyConfig {
+	var config handyConfig
 
 	clear()
 	fmt.Printf("You will now answer a series of questions to provide default values for your configuration. Press enter to select the indicated default. For more information, please consult the project documentation.\n\n(Press enter to continue)\n\n")
@@ -189,6 +191,7 @@ func promptForConfig(locationSelection int) *HandyConfig {
 	config.EncodeConfig.IncludeAllRelevantSubtitles = promptForBool("Include all relevant subtitle tracks in encoded output files?",
 		"Some discs contain multiple subtitle tracks in the same language. If this option is enabled, all subtitle tracks in the same language will be included in the encoded output files.",
 		false)
+
 	clear()
 
 	var handyDir string
@@ -220,6 +223,12 @@ func promptForConfig(locationSelection int) *HandyConfig {
 	config.HBOutputDirectory = promptForString("Provide a path to a directory that HandBrake encoded output files can be placed. Using the same directory as the MKV output directory is not recommended.",
 		fmt.Sprintf("Absolute path to a directory. Example: %s", defaultHBOutputDirectory),
 		defaultHBOutputDirectory, nil)
+
+	clear()
+
+	config.DeleteRawMKVFiles = promptForBool("Automatically delete raw unencoded files after ripping/encoding operations?",
+		"If enabled, raw unencoded mkv files will be deleted after the ripping/encoding operation completes. If disabled, raw unencoded files will be retained. Leaving this option enabled is recommended as it will save space on the disk.",
+		true)
 
 	clear()
 

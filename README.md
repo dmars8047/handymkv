@@ -1,5 +1,7 @@
 # Handy
 
+
+
 ## Description
 
 Handy is a tool that is designed to automate the process of ripping discs using MakeMKV and then encoding the resulting files using Handbrake.
@@ -94,7 +96,11 @@ Then to rip and encode a disc, run the following command:
 handy
 ```
 
-This will first read the titles on the disc and prompt you to select which titles to rip. Once you have selected the titles to rip, the process will begin. The progress of the process will be displayed in the terminal. Once the process is complete, a summary will be displayed showing the space saved and the time taken to complete the process.
+This will first read the titles on the disc and prompt you to select which titles to rip. Once you have selected the titles to rip, the process will begin. The progress of the process will be displayed in the terminal.
+
+![alt text](https://github.com/dmars8047/handy/doc/handy_status.png?raw=true)
+
+Once the process is complete, a summary will be displayed showing the space saved and the time taken to complete the process.
 
 All output files will be stored in the directory specified in the configuration file.
 

@@ -247,9 +247,7 @@ func Exec(discId int, quality int, encoder string) error {
 	fmt.Printf("Total size of encoded files: %s\n", formatSavedSpace(totalSizeEncoded))
 	fmt.Printf("Total disk space saved via encoding: %s\n", formatSavedSpace(totalSizeRaw-totalSizeEncoded))
 
-	shouldDelete := promptUserForDeletion()
-
-	if shouldDelete {
+	if config.DeleteRawMKVFiles {
 		deleteRawFiles(config)
 	}
 
@@ -259,19 +257,19 @@ func Exec(discId int, quality int, encoder string) error {
 	return nil
 }
 
-func calculateTotalSizes(titles []TitleInfo, config *HandyConfig) (int64, int64, error) {
+func calculateTotalSizes(titles []TitleInfo, config *handyConfig) (int64, int64, error) {
 	var totalSizeRaw, totalSizeEncoded int64
 
 	for _, title := range titles {
 		rawFilePath := filepath.Join(config.MKVOutputDirectory, title.FileName)
-		rawFileSize, err := GetFileSize(rawFilePath)
+		rawFileSize, err := getFileSize(rawFilePath)
 		if err != nil {
 			return 0, 0, err
 		}
 		totalSizeRaw += rawFileSize
 
 		encodedFilePath := filepath.Join(config.HBOutputDirectory, strings.ReplaceAll(title.FileName, " ", "_"))
-		encodedFileSize, err := GetFileSize(encodedFilePath)
+		encodedFileSize, err := getFileSize(encodedFilePath)
 		if err != nil {
 			return 0, 0, err
 		}
@@ -306,7 +304,7 @@ func Setup() error {
 		return nil
 	}
 
-	var config *HandyConfig
+	var config *handyConfig
 
 	for {
 		config = promptForConfig(configLocationSelection)
@@ -324,7 +322,7 @@ func Setup() error {
 	clear()
 	fmt.Println("Creating config file...")
 
-	err = CreateConfigFile(ConfigFileLocation(configLocationSelection), config, false)
+	err = createConfigFile(configFileLocation(configLocationSelection), config, false)
 
 	if err != nil {
 		return err
