@@ -98,7 +98,7 @@ handy
 
 This will first read the titles on the disc and prompt you to select which titles to rip. Once you have selected the titles to rip, the process will begin. The progress of the process will be displayed in the terminal.
 
-![alt text](https://github.com/dmars8047/handy/doc/handy_status.png?raw=true)
+![alt text](https://github.com/dmars8047/handy/blob/develop/doc/handy_status.png?raw=true)
 
 Once the process is complete, a summary will be displayed showing the space saved and the time taken to complete the process.
 
