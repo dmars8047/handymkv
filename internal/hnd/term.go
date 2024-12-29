@@ -14,16 +14,24 @@ const (
 	colorBlue   = "\033[36m"
 )
 
+// Prints the application logo
 func PrintLogo() {
-	logoText := "██╗  ██╗ █████╗ ███╗   ██╗██████╗ ██╗   ██╗\n"
-	logoText += "██║  ██║██╔══██╗████╗  ██║██╔══██╗╚██╗ ██╔╝\n"
-	logoText += "███████║███████║██╔██╗ ██║██║  ██║ ╚████╔╝ \n"
-	logoText += "██╔══██║██╔══██║██║╚██╗██║██║  ██║  ╚██╔╝  \n"
-	logoText += "██║  ██║██║  ██║██║ ╚████║██████╔╝   ██║   \n"
-	logoText += "╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═════╝    ╚═╝   \n"
-	logoText += "A MakeMKV + HandBrake productivity tool by Herbzy\n"
+	var sb strings.Builder
 
-	fmt.Printf("\n%s\n", logoText)
+	sb.WriteString("██╗  ██╗ █████╗ ███╗   ██╗██████╗ ██╗   ██╗\n")
+	sb.WriteString("██║  ██║██╔══██╗████╗  ██║██╔══██╗╚██╗ ██╔╝\n")
+	sb.WriteString("███████║███████║██╔██╗ ██║██║  ██║ ╚████╔╝ \n")
+	sb.WriteString("██╔══██║██╔══██║██║╚██╗██║██║  ██║  ╚██╔╝  \n")
+	sb.WriteString("██║  ██║██║  ██║██║ ╚████║██████╔╝   ██║   \n")
+	sb.WriteString("╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═════╝    ╚═╝   \n")
+	sb.WriteString("A MakeMKV + HandBrake productivity tool by Herbzy\n")
+
+	fmt.Printf("\n%s\n", sb.String())
+}
+
+// clear clears the terminal
+func clear() {
+	fmt.Print("\033[H\033[2J") // Clear the terminal
 }
 
 // colorize wraps a string in the specified color

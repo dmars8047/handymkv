@@ -34,7 +34,7 @@ type HandyConfig struct {
 func (config *HandyConfig) String() string {
 	var sb strings.Builder
 
-	sb.WriteString("Encode Settings\n")
+	sb.WriteString("Encode Settings\n\n")
 	sb.WriteString(fmt.Sprintf("Encoder: %s\n", config.EncodeConfig.Encoder))
 	sb.WriteString(fmt.Sprintf("Quality: %d\n", config.EncodeConfig.Quality))
 	sb.WriteString(fmt.Sprintf("Audio Languages: %s\n", strings.Join(config.EncodeConfig.AudioLanguages, ", ")))
@@ -42,6 +42,7 @@ func (config *HandyConfig) String() string {
 	sb.WriteString(fmt.Sprintf("Subtitle Languages: %s\n", strings.Join(config.EncodeConfig.SubtitleLanguages, ", ")))
 	sb.WriteString(fmt.Sprintf("Include All Relevant Subtitles: %t\n", config.EncodeConfig.IncludeAllRelevantSubtitles))
 	sb.WriteString("\n")
+	sb.WriteString("Output Directories\n\n")
 	sb.WriteString(fmt.Sprintf("MKV Output Directory: %s\n", config.MKVOutputDirectory))
 	sb.WriteString(fmt.Sprintf("HandBrake Output Directory: %s\n", config.HBOutputDirectory))
 
@@ -127,14 +128,14 @@ func CreateConfigFile(location ConfigFileLocation, config *HandyConfig, overwrit
 
 	// Check if the config file already exists
 	if _, err := os.Stat(configPath); err == nil && !overwrite {
-		fmt.Printf("A config file already exists at %s. Overwrite? [y/n]\n\n", configPath)
+		fmt.Printf("\nA config file already exists at %s. Overwrite? [y/n]\n\n", configPath)
 		var choice string
 		fmt.Scanln(&choice)
 		if strings.ToLower(choice) != "y" {
-			fmt.Printf("Skipping creation of config file. The file %s already exists.\n", configPath)
+			fmt.Printf("\nSkipping creation of config file. The file %s already exists.\n", configPath)
 			return nil
 		}
-	} else if !errors.Is(err, os.ErrNotExist) {
+	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("error checking for existing config file: %w", err)
 	}
 

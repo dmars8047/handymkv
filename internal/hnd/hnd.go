@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -289,7 +290,7 @@ func (pt *progressTracker) applyChangeAndDisplay(titleIndex int, applyChangeFunc
 }
 
 func (pt *progressTracker) refreshDisplay() {
-	fmt.Print("\033[H\033[2J") // Clear the terminal
+	clear()
 	PrintLogo()
 	fmt.Printf("%-30s%-20s%-20s\n", "Title", "Ripping", "Encoding")
 	fmt.Println(strings.Repeat("-", 70))
@@ -398,7 +399,7 @@ func deleteRawFiles(titles []TitleInfo, config *HandyConfig) {
 
 // Prompts the user to create a configuration file.
 func Setup() error {
-	fmt.Println("What level of configuration would you like to create?")
+	fmt.Printf("What level of configuration would you like to create?\n\n")
 	fmt.Println("1 - User-wide configuration.")
 	fmt.Println("2 - Current working directory.")
 	fmt.Println()
@@ -424,67 +425,101 @@ func Setup() error {
 	var config *HandyConfig
 
 	for {
-		config = promptForConfig()
+		config = promptForConfig(configLocationSelection)
 		fmt.Printf("\n%s\n", config.String())
-		fmt.Printf("Accept these settings? [y/n]\n")
+		fmt.Printf("Accept these settings? [Y/N]\n\n")
 
 		var choice string
-		fmt.Scanln(choice)
+		fmt.Scanln(&choice)
 
 		if strings.ToLower(choice) == "y" {
 			break
 		}
 	}
 
-	fmt.Println("\nCreating config file...")
+	clear()
+	fmt.Println("Creating config file...")
 
-	err = CreateConfigFile(ConfigFileLocation(configLocationSelection), config, true)
+	err = CreateConfigFile(ConfigFileLocation(configLocationSelection), config, false)
 
 	if err != nil {
-		fmt.Printf("An error occurred while creating config file.")
 		return err
 	}
 
-	fmt.Printf("Config file creation complete.\n")
+	fmt.Printf("\nConfig file creation complete.\n\n")
 
 	return nil
 }
 
 // Prompts the user for configuration values and returns a new HandyConfig object.
-func promptForConfig() *HandyConfig {
+func promptForConfig(locationSelection int) *HandyConfig {
 	var config HandyConfig
 
-	fmt.Println("You will now answer a series of questions to provide default values for your configuration. Press enter to select the indicated default. For more information, please consult the project documentation.")
+	clear()
+	fmt.Printf("You will now answer a series of questions to provide default values for your configuration. Press enter to select the indicated default. For more information, please consult the project documentation.\n\n(Press enter to continue)\n\n")
+
+	// Press enter to continue
+	fmt.Scanln()
+	clear()
 
 	config.EncodeConfig.Encoder = promptForString("What encoder should be used by default?", "", DEFAULT_ENCODER, PossibleEncoderValues)
+	clear()
 	config.EncodeConfig.Quality = promptForInt("What should the default quality be set to?", "", DEFAULT_QUALITY)
+	clear()
 
 	config.EncodeConfig.AudioLanguages = promptForStringSlice("What audio languages should be included in encoded output files?",
 		"Provide a comma delimited list of ISO 639-2 strings. Example: eng,jpn",
 		"any")
 
+	clear()
+
 	config.EncodeConfig.IncludeAllRelevantAudio = promptForBool("Include all relevant audio tracks in encoded output files?",
-		`Some discs contain multiple audio tracks in the same language. 
-		If this option is enabled, all audio tracks in the same language will be included in the encoded output files. 
-		If this option is disabled, only the first audio track in the specified language will be included.`,
+		"Some discs contain multiple audio tracks in the same language. If this option is enabled, all audio tracks in the same language will be included in the encoded output files. If this option is disabled, only the first audio track in the specified language will be included.",
 		false)
+
+	clear()
 
 	config.EncodeConfig.SubtitleLanguages = promptForStringSlice("What subtitle languages should be included in encoded output files?",
 		"Provide a comma delimited list of ISO 639-2 strings. Example: eng,jpn",
 		"eng")
+	clear()
 
 	config.EncodeConfig.IncludeAllRelevantSubtitles = promptForBool("Include all relevant subtitle tracks in encoded output files?",
-		`Some discs contain multiple subtitle tracks in the same language.
-		If this option is enabled, all subtitle tracks in the same language will be included in the encoded output files.`,
+		"Some discs contain multiple subtitle tracks in the same language. If this option is enabled, all subtitle tracks in the same language will be included in the encoded output files.",
 		false)
+	clear()
+
+	var handyDir string
+
+	if locationSelection == 1 {
+		// Get logged in user's home directory
+		usr, err := user.Current()
+
+		if err != nil {
+			fmt.Printf("Error getting current user: %v\n", err)
+		}
+
+		handyDir = filepath.Join(usr.HomeDir, "handy")
+	} else {
+		handyDir = "."
+	}
+
+	defaultMKVOutputDirectory := filepath.Join(handyDir, "mkvoutput")
 
 	config.MKVOutputDirectory = promptForString("Provide a path to a directory that raw unencoded MKV files can be staged.",
-		"Absolute path to a directory. Example: /home/user/handy/mkvoutput",
-		"/home/user/handy/mkvoutput",
+		fmt.Sprintf("Absolute path to a directory. Example: %s", defaultMKVOutputDirectory),
+		defaultMKVOutputDirectory,
 		nil)
+
+	clear()
+
+	defaultHBOutputDirectory := filepath.Join(handyDir, "hboutput")
+
 	config.HBOutputDirectory = promptForString("Provide a path to a directory that HandBrake encoded output files can be placed. Using the same directory as the MKV output directory is not recommended.",
-		"Absolute path to a directory. Example: /home/user/handy/hboutput",
-		"/home/user/handy/hboutput", nil)
+		fmt.Sprintf("Absolute path to a directory. Example: %s", defaultHBOutputDirectory),
+		defaultHBOutputDirectory, nil)
+
+	clear()
 
 	return &config
 }
@@ -499,18 +534,19 @@ func promptForString(prompt, explain, defaultValue string, validValues map[strin
 	}
 
 	if len(validValues) > 0 {
-		fmt.Println("Valid values:")
+		fmt.Printf("Valid values:\n\n")
 		for k := range validValues {
 			fmt.Printf("%s\n", k)
 		}
-		fmt.Println()
 	}
 
 	if defaultValue != "" {
-		fmt.Printf("Default: %s\n\n", defaultValue)
+		fmt.Printf("\nDefault: %s\n\n", defaultValue)
 	}
 
 	fmt.Scanln(&input)
+	fmt.Println()
+
 	input = strings.TrimSpace(input)
 
 	if input == "" {
@@ -538,6 +574,7 @@ func promptForInt(prompt, explain string, defaultValue int) int {
 	fmt.Printf("Default: %d\n\n", defaultValue)
 
 	fmt.Scanln(&input)
+	fmt.Println()
 
 	if input == "" {
 		return defaultValue
@@ -567,6 +604,7 @@ func promptForStringSlice(prompt, explain, defaultValue string) []string {
 	}
 
 	fmt.Scanln(&input)
+	fmt.Println()
 
 	if input == "" {
 		return []string{defaultValue}
@@ -591,9 +629,10 @@ func promptForBool(prompt, explain string, defaultValue bool) bool {
 		fmt.Printf("%s\n", explain)
 	}
 
-	fmt.Printf("Default: %s\n\n", defaultStr)
+	fmt.Printf("\nDefault: %s\n\n", defaultStr)
 
 	fmt.Scanln(&input)
+	fmt.Println()
 
 	input = strings.ToLower(strings.TrimSpace(input))
 
