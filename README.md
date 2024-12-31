@@ -64,7 +64,8 @@ Usage of handy:
   -e string
         Encoder. If not provided then the value will be read from the config file.
   -q int
-        Quality. Sets the quality value to be used for each encoding task. If not provided then the value will be read from cofnig file.
+        Quality. Sets the quality value to be used for each encoding task. If not provided then the value will be read from cofnig file. (default -1)
+  -v    Version. Prints the version of the application.
 ```
 
 ## Installation

@@ -30,4 +30,6 @@ If the -q flag is provided then the application will rip the disc with the speci
 
 If the -e flag is provided then the application will rip the disc with the specified encoder. If no encoder is provided then the application will rip with the encoder specificed in the config file.
 
+If the -v flag is provided then the application will print the version of the application and exit.
+
 */

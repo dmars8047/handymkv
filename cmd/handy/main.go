@@ -8,11 +8,16 @@ import (
 	"github.com/dmars8047/handy/internal/handy"
 )
 
+const applicationVersion = "0.0.1"
+
 func main() {
 	// Parse command line args
 	var discId int
 	var quality int
 	var encoder string
+	var version bool
+
+	flag.BoolVar(&version, "v", false, "Version. Prints the version of the application.")
 
 	configFlag := flag.Bool("c", false, "Config. Runs the configuration wizard.")
 
@@ -27,6 +32,11 @@ func main() {
 	handy.PrintLogo()
 
 	setup := *configFlag
+
+	if version {
+		fmt.Printf("Handy version %s\n\n", applicationVersion)
+		return
+	}
 
 	if setup {
 		err := handy.Setup()
