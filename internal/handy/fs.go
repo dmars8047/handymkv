@@ -23,7 +23,7 @@ func getFileSize(filePath string) (int64, error) {
 }
 
 func deleteRawFiles(config *handyConfig) {
-	fmt.Printf("Deleting raw unencoded files...\n\n")
+	fmt.Printf("\nDeleting raw unencoded files...\n\n")
 
 	// Delete entire MKV output directory
 	err := os.RemoveAll(config.MKVOutputDirectory)

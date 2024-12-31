@@ -55,25 +55,6 @@ func Exec(discId int, quality int, encoder string) error {
 		return err
 	}
 
-	// Create output directory dirSlug with timestamp
-	dirSlug := fmt.Sprintf("handy_%s", time.Now().Format("2006-01-02_15-04-05"))
-
-	config.MKVOutputDirectory = filepath.Join(config.MKVOutputDirectory, dirSlug)
-
-	err = os.MkdirAll(config.MKVOutputDirectory, 0740)
-
-	if err != nil {
-		return fmt.Errorf("an error occurred while creating the mkv output directory: %w", err)
-	}
-
-	config.HBOutputDirectory = filepath.Join(config.HBOutputDirectory, dirSlug)
-
-	err = os.MkdirAll(config.HBOutputDirectory, 0740)
-
-	if err != nil {
-		return fmt.Errorf("an error occurred while creating the handbrake output directory: %w", err)
-	}
-
 	fmt.Printf("The following titles were read from the disc: %s\n\n", titles[0].DiscTitle)
 
 	for _, title := range titles {
@@ -127,8 +108,8 @@ func Exec(discId int, quality int, encoder string) error {
 		statuses: make([]titleStatus, len(titles)),
 	}
 
-	for _, title := range titles {
-		tracker.statuses[title.Index] = titleStatus{
+	for i, title := range titles {
+		tracker.statuses[i] = titleStatus{
 			TitleIndex: title.Index,
 			Title:      title.FileName,
 			Ripping:    Pending,
@@ -136,13 +117,32 @@ func Exec(discId int, quality int, encoder string) error {
 		}
 	}
 
-	processStartTime := time.Now()
+	// Create output directory dirSlug with timestamp
+	dirSlug := fmt.Sprintf("handy_%s", time.Now().Format("2006-01-02_15-04-05"))
+
+	config.MKVOutputDirectory = filepath.Join(config.MKVOutputDirectory, dirSlug)
+
+	err = os.MkdirAll(config.MKVOutputDirectory, 0740)
+
+	if err != nil {
+		return fmt.Errorf("an error occurred while creating the mkv output directory: %w", err)
+	}
+
+	config.HBOutputDirectory = filepath.Join(config.HBOutputDirectory, dirSlug)
+
+	err = os.MkdirAll(config.HBOutputDirectory, 0740)
+
+	if err != nil {
+		return fmt.Errorf("an error occurred while creating the handbrake output directory: %w", err)
+	}
 
 	fmt.Println()
 
 	ctx, cancelProcessing := context.WithCancel(context.Background())
 	var encChannel = make(chan EncodingParams, 1)
 	var wg sync.WaitGroup
+
+	processStartTime := time.Now()
 
 	wg.Add(1)
 
