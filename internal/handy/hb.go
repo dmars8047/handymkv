@@ -54,26 +54,3 @@ func Encode(ctx context.Context, params *EncodingParams) error {
 
 	return nil
 }
-
-func parseVideoEncoders(text string) []string {
-	var encoders []string
-	lines := strings.Split(text, "\n")
-	start := false
-
-	for _, line := range lines {
-		if strings.Contains(line, "Select video encoder:") {
-			start = true
-			continue
-		}
-		if start {
-			if strings.TrimSpace(line) == "" {
-				break
-			}
-			encoder := strings.TrimSpace(line)
-			if encoder != "" {
-				encoders = append(encoders, encoder)
-			}
-		}
-	}
-	return encoders
-}
