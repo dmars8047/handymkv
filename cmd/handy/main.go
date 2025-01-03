@@ -16,6 +16,7 @@ func main() {
 	var quality int
 	var encoder string
 	var version bool
+	var readConfig bool
 
 	flag.BoolVar(&version, "v", false, "Version. Prints the version of the application.")
 
@@ -26,6 +27,8 @@ func main() {
 	flag.StringVar(&encoder, "e", "", "Encoder. If not provided then the value will be read from the config file.")
 
 	flag.IntVar(&discId, "d", 0, "Disc. The disc index to rip. If not provided then disc 0 will be ripped.")
+
+	flag.BoolVar(&readConfig, "r", false, "Read. Reads and outputs the first encountered configuration file. The current working directory is searched first, then the user-level configuration.")
 
 	flag.Parse()
 
