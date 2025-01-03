@@ -206,7 +206,7 @@ func Exec(discId int, quality int, encoder string) error {
 
 				tracker.applyChangeAndDisplay(params.TitleIndex, applyInProgress)
 
-				encErr := Encode(ctx, &params)
+				encErr := encode(ctx, &params)
 
 				if encErr != nil {
 					// fmt.Printf("An error occurred while encoding %s\nError: %v\n", params.InputFilePath, encErr)

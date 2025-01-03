@@ -1,6 +1,7 @@
 package handy
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os/exec"
@@ -19,7 +20,7 @@ type EncodingParams struct {
 	IncludeAllRelevantAudio     bool     `json:"include_all_relevant_audio"`
 }
 
-func Encode(ctx context.Context, params *EncodingParams) error {
+func encode(ctx context.Context, params *EncodingParams) error {
 	var args []string = []string{
 		"--input", params.MKVOutputPath,
 		"--output", params.HandBrakeOutputPath,
@@ -53,4 +54,42 @@ func Encode(ctx context.Context, params *EncodingParams) error {
 	}
 
 	return nil
+}
+
+// Calls HandBrakeCLI --help and parses the output to get a list of possible encoders
+func getPossibleEncoders() ([]string, error) {
+	var encoders []string
+
+	cmd := exec.Command("HandBrakeCLI", "--help")
+
+	output, err := cmd.Output()
+
+	if err != nil {
+		return encoders, fmt.Errorf("handbrakecli failure: %w", err)
+	}
+
+	scanner := bufio.NewScanner(strings.NewReader(string(output)))
+	inEncoderSection := false
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		if strings.Contains(line, "Select video encoder:") {
+			inEncoderSection = true
+			continue
+		}
+
+		if inEncoderSection {
+			if line == "" || strings.HasPrefix(line, "--") {
+				break
+			}
+			encoders = append(encoders, line)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("error reading command output: %w", err)
+	}
+
+	return encoders, nil
 }

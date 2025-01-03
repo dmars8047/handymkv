@@ -166,8 +166,16 @@ func promptForConfig(locationSelection int) *handyConfig {
 	fmt.Scanln()
 	clear()
 
-	config.EncodeConfig.Encoder = promptForString("What encoder should be used by default?", "", defaultEncoder, possibleEncoderValues)
+	encoderOptions, err := getPossibleEncoders()
+
+	if err != nil {
+		fmt.Printf("Could not parse encoders: %v. Falling back to documentation defaults.\n", err)
+		encoderOptions = defaultPossibleEncoderValues
+	}
+
+	config.EncodeConfig.Encoder = promptForString("What encoder should be used by default?", "", defaultEncoder, encoderOptions)
 	clear()
+
 	config.EncodeConfig.Quality = promptForInt("What should the default quality be set to?", "", defaultQuality)
 	clear()
 

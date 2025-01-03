@@ -34,12 +34,12 @@ func main() {
 
 	handy.PrintLogo()
 
-	setup := *configFlag
-
 	if version {
 		fmt.Printf("Handy version %s\n\n", applicationVersion)
 		return
 	}
+
+	setup := *configFlag
 
 	if setup {
 		err := handy.Setup()
@@ -47,6 +47,25 @@ func main() {
 		if err != nil {
 			fmt.Printf("An error occurred during the setup process.\nError: %v\n", err)
 		}
+
+		return
+	}
+
+	if readConfig {
+		// TODO read config file
+		config, err := handy.ReadConfig()
+
+		if err != nil {
+			if err == handy.ErrConfigNotFound {
+				fmt.Printf("Config file not found. Please run the configuration wizard with 'handy -c'.\n\n")
+				return
+			}
+
+			fmt.Printf("An error occurred while reading the configuration file.\n\nError: %v\n", err)
+			return
+		}
+
+		fmt.Printf("Configuration file found.\n\n%+v\n", config)
 
 		return
 	}

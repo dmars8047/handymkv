@@ -56,7 +56,7 @@ func padString(s string, width int) (string, bool) {
 }
 
 // Prompts the user for a string value. If the user provides an empty string, the default value is returned.
-func promptForString(prompt, explain, defaultValue string, validValues map[string]struct{}) string {
+func promptForString(prompt, explain, defaultValue string, validValues []string) string {
 	var input string
 	fmt.Printf("%s\n\n", prompt)
 
@@ -66,8 +66,8 @@ func promptForString(prompt, explain, defaultValue string, validValues map[strin
 
 	if len(validValues) > 0 {
 		fmt.Printf("Valid values:\n\n")
-		for k := range validValues {
-			fmt.Printf("%s\n", k)
+		for _, val := range validValues {
+			fmt.Printf("%s\n", val)
 		}
 	}
 
@@ -84,12 +84,6 @@ func promptForString(prompt, explain, defaultValue string, validValues map[strin
 		return defaultValue
 	}
 
-	if validValues != nil {
-		if _, valid := validValues[input]; !valid {
-			fmt.Printf("Invalid value. Using default value: %s\n", defaultValue)
-			return defaultValue
-		}
-	}
 	return input
 }
 
