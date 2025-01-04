@@ -181,7 +181,7 @@ func promptForBool(prompt, explain string, defaultValue bool) bool {
 	defaultStr := "N"
 
 	if defaultValue {
-		defaultStr = "Y"
+		defaultStr = "y"
 	}
 
 	fmt.Printf("%s\n\n", prompt)

@@ -49,6 +49,8 @@ func Exec(discId int, quality int, encoder string) error {
 		return fmt.Errorf("an error occurred while creating the handbrake output directory: %w", err)
 	}
 
+	fmt.Printf("Reading titles from disc...\n\n")
+
 	titles, err := getTitles(discId)
 
 	if err != nil {
@@ -176,8 +178,8 @@ func Exec(discId int, quality int, encoder string) error {
 			// Replace spaces with underscores for encoding run.
 			encodingOutputFileName := strings.ReplaceAll(title.FileName, " ", "_")
 
-			if config.EncodeConfig.OutputFileFormat != "" && config.EncodeConfig.OutputFileFormat != ".mkv" {
-				encodingOutputFileName = fmt.Sprintf("%s%s", strings.TrimSuffix(encodingOutputFileName, ".mkv"), config.EncodeConfig.OutputFileFormat)
+			if config.EncodeConfig.OutputFileFormat != "" && config.EncodeConfig.OutputFileFormat != "mkv" {
+				encodingOutputFileName = fmt.Sprintf("%s.%s", strings.TrimSuffix(encodingOutputFileName, ".mkv"), config.EncodeConfig.OutputFileFormat)
 			}
 
 			encChannel <- EncodingParams{
@@ -268,7 +270,7 @@ func Exec(discId int, quality int, encoder string) error {
 // Prompts the user to create a configuration file.
 func Setup() error {
 	fmt.Printf("What level of configuration would you like to create?\n\n")
-	fmt.Println("1 - User-wide configuration.")
+	fmt.Println("1 - User-wide configuration (recommended).")
 	fmt.Println("2 - Current working directory.")
 	fmt.Println()
 

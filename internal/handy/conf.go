@@ -249,9 +249,9 @@ func promptForConfig(configLocationSelection int) (*handyConfig, error) {
 			"any")
 		clear()
 
-		config.EncodeConfig.IncludeAllRelevantAudio = promptForBool("Include all relevant audio tracks in encoded output files?",
+		config.EncodeConfig.IncludeAllRelevantAudio = promptForBool("Include all relevant audio tracks in encoded output files? [y/N]",
 			"Some discs contain multiple audio tracks in the same language. If this option is enabled, all audio tracks in the same language will be included in the encoded output files. If this option is disabled, only the first audio track in the specified language will be included.",
-			false)
+			true)
 		clear()
 
 		config.EncodeConfig.SubtitleLanguages = promptForStringSlice("What subtitle languages should be included in encoded output files?",
@@ -259,9 +259,9 @@ func promptForConfig(configLocationSelection int) (*handyConfig, error) {
 			"eng")
 		clear()
 
-		config.EncodeConfig.IncludeAllRelevantSubtitles = promptForBool("Include all relevant subtitle tracks in encoded output files?",
+		config.EncodeConfig.IncludeAllRelevantSubtitles = promptForBool("Include all relevant subtitle tracks in encoded output files? [y/N]",
 			"Some discs contain multiple subtitle tracks in the same language. If this option is enabled, all subtitle tracks in the same language will be included in the encoded output files.",
-			false)
+			true)
 		clear()
 
 		config.EncodeConfig.OutputFileFormat = promptForSelection("What should the default output file format be?", []string{"mkv", "mp4"})
@@ -330,7 +330,7 @@ func promptForConfig(configLocationSelection int) (*handyConfig, error) {
 
 	clear()
 
-	config.DeleteRawMKVFiles = promptForBool("Automatically delete raw unencoded files after ripping/encoding operations?",
+	config.DeleteRawMKVFiles = promptForBool("Automatically delete raw unencoded files after ripping/encoding operations? [y/N]",
 		"If enabled, raw unencoded mkv files will be deleted after the ripping/encoding operation completes. If disabled, raw unencoded files will be retained. Leaving this option enabled is recommended as it will save space on the disk.",
 		true)
 
