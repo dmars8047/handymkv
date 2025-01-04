@@ -9,30 +9,14 @@ import (
 	"strings"
 )
 
-// TINFO:id,code,value
-// TINFO:0,2,0,"Breaking Bad: Season 1: Disc 1"
-// TINFO:0,8,0,"7"
-// TINFO:0,9,0,"0:58:06"
-// TINFO:0,10,0,"12.5 GB"
-// TINFO:0,11,0,"13472686080"
-// TINFO:0,16,0,"00763.mpls"
-// TINFO:0,25,0,"1"
-// TINFO:0,26,0,"262"
-// TINFO:0,27,0,"Breaking_Bad_Season_1_Disc_1_t00.mkv"
-// TINFO:0,28,0,"eng"
-// TINFO:0,29,0,"English"
-// TINFO:0,30,0,"Breaking Bad: Season 1: Disc 1 - 7 chapter(s) , 12.5 GB"
-// TINFO:0,31,6120,"<b>Title information</b><br>"
-// TINFO:0,33,0,"0"
-
 // 2 - Disc Title
 // 8 - Number of chapters in file
 // 9 - Length of file in seconds
-// 10 - File size in GB
-// 11 - File size in bytes
+// 10 - File size (GB)
+// 11 - File size (Bytes)
 // 27 - File name
-// 28 - audio short code
-// 29 - audio long code
+// 28 - Audio Short Code
+// 29 - Audio Long Code
 type TitleInfo struct {
 	// Index on disc
 	Index     int

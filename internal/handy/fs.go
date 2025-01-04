@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
 // Reads the size of the specified file and returns it in bytes.
@@ -33,4 +35,27 @@ func deleteRawFiles(config *handyConfig) {
 	}
 
 	fmt.Printf("Raw unencoded files deleted.\n")
+}
+
+// Calculates the total size of the raw and encoded files for all selected titles.
+func calculateTotalFileSizes(titles []TitleInfo, config *handyConfig) (int64, int64, error) {
+	var totalSizeRaw, totalSizeEncoded int64
+
+	for _, title := range titles {
+		rawFilePath := filepath.Join(config.MKVOutputDirectory, title.FileName)
+		rawFileSize, err := getFileSize(rawFilePath)
+		if err != nil {
+			return 0, 0, err
+		}
+		totalSizeRaw += rawFileSize
+
+		encodedFilePath := filepath.Join(config.HBOutputDirectory, strings.ReplaceAll(title.FileName, " ", "_"))
+		encodedFileSize, err := getFileSize(encodedFilePath)
+		if err != nil {
+			return 0, 0, err
+		}
+		totalSizeEncoded += encodedFileSize
+	}
+
+	return totalSizeRaw, totalSizeEncoded, nil
 }

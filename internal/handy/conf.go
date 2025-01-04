@@ -36,14 +36,31 @@ func (config *handyConfig) String() string {
 	var sb strings.Builder
 
 	sb.WriteString("Encode Settings\n\n")
-	sb.WriteString(fmt.Sprintf("Encoder: %s\n", config.EncodeConfig.Encoder))
-	sb.WriteString(fmt.Sprintf("Quality: %d\n", config.EncodeConfig.Quality))
-	sb.WriteString(fmt.Sprintf("Audio Languages: %s\n", strings.Join(config.EncodeConfig.AudioLanguages, ", ")))
-	sb.WriteString(fmt.Sprintf("Include All Relevant Audio: %t\n", config.EncodeConfig.IncludeAllRelevantAudio))
-	sb.WriteString(fmt.Sprintf("Subtitle Languages: %s\n", strings.Join(config.EncodeConfig.SubtitleLanguages, ", ")))
-	sb.WriteString(fmt.Sprintf("Include All Relevant Subtitles: %t\n", config.EncodeConfig.IncludeAllRelevantSubtitles))
+
+	if config.EncodeConfig.Preset == "" {
+		sb.WriteString(fmt.Sprintf("Encoder: %s\n", config.EncodeConfig.Encoder))
+
+		if config.EncodeConfig.EncoderPreset != "" {
+			sb.WriteString(fmt.Sprintf("Encoder Preset: %s\n", config.EncodeConfig.EncoderPreset))
+		} else {
+			sb.WriteString(fmt.Sprintf("Quality: %d\n", config.EncodeConfig.Quality))
+		}
+
+		sb.WriteString(fmt.Sprintf("Audio Languages: %s\n", strings.Join(config.EncodeConfig.AudioLanguages, ", ")))
+		sb.WriteString(fmt.Sprintf("Include All Relevant Audio: %t\n", config.EncodeConfig.IncludeAllRelevantAudio))
+		sb.WriteString(fmt.Sprintf("Subtitle Languages: %s\n", strings.Join(config.EncodeConfig.SubtitleLanguages, ", ")))
+		sb.WriteString(fmt.Sprintf("Include All Relevant Subtitles: %t\n", config.EncodeConfig.IncludeAllRelevantSubtitles))
+		sb.WriteString(fmt.Sprintf("Output File Format: %s\n", config.EncodeConfig.OutputFileFormat))
+	} else {
+		sb.WriteString(fmt.Sprintf("Preset: %s\n", config.EncodeConfig.Preset))
+
+		if config.EncodeConfig.PresetFile != "" {
+			sb.WriteString(fmt.Sprintf("Preset File: %s\n", config.EncodeConfig.PresetFile))
+		}
+	}
+
 	sb.WriteString("\n")
-	sb.WriteString("Output Directories\n\n")
+	sb.WriteString("General Settings\n\n")
 	sb.WriteString(fmt.Sprintf("MKV Output Directory: %s\n", config.MKVOutputDirectory))
 	sb.WriteString(fmt.Sprintf("HandBrake Output Directory: %s\n", config.HBOutputDirectory))
 	sb.WriteString(fmt.Sprintf("Automatically Delete Raw MKV Files: %t\n", config.DeleteRawMKVFiles))
@@ -156,55 +173,134 @@ func createConfigFile(location configFileLocation, config *handyConfig, overwrit
 }
 
 // Prompts the user for configuration values and returns a new HandyConfig object.
-func promptForConfig(locationSelection int) *handyConfig {
+func promptForConfig(configLocationSelection int) (*handyConfig, error) {
 	var config handyConfig
 
 	clear()
-	fmt.Printf("You will now answer a series of questions to provide default values for your configuration. Press enter to select the indicated default. For more information, please consult the project documentation.\n\n(Press enter to continue)\n\n")
+	// Simplified handy encoder settings vs selecting a handbrake preset
+	fmt.Printf("You will now answer a series of questions to provide default values for your configuration. Please choose one of the three following options for encoding settings:\n\n")
+	fmt.Println("1 - Use Handy Simplified Encoder Settings")
+	fmt.Println("2 - Use a Built-In HandBrake Preset")
+	fmt.Println("3 - Provide a Custom HandBrake Preset File")
+	fmt.Println()
 
-	// Press enter to continue
-	fmt.Scanln()
-	clear()
+	var encoderSelection int
 
-	encoderOptions, err := getPossibleEncoders()
+	for {
+		fmt.Scanln(&encoderSelection)
 
-	if err != nil {
-		fmt.Printf("Could not parse encoders: %v. Falling back to documentation defaults.\n", err)
-		encoderOptions = defaultPossibleEncoderValues
+		if encoderSelection == 1 || encoderSelection == 2 || encoderSelection == 3 {
+			break
+		}
+
+		fmt.Println("Invalid selection. Please choose 1, 2, or 3.")
 	}
 
-	config.EncodeConfig.Encoder = promptForString("What encoder should be used by default?", "", defaultEncoder, encoderOptions)
 	clear()
 
-	config.EncodeConfig.Quality = promptForInt("What should the default quality be set to?", "", defaultQuality)
-	clear()
+	if encoderSelection == 1 {
+		encoderOptions, err := getPossibleEncoders()
 
-	config.EncodeConfig.AudioLanguages = promptForStringSlice("What audio languages should be included in encoded output files?",
-		"Provide a comma delimited list of ISO 639-2 strings. Example: eng,jpn",
-		"any")
+		if err != nil {
+			fmt.Printf("Could not parse encoders: %v. Falling back to documentation defaults.\n", err)
+			encoderOptions = defaultPossibleEncoderValues
+		}
 
-	clear()
+		config.EncodeConfig.Encoder = promptForSelection("What encoder should be used by default?", encoderOptions)
+		clear()
 
-	config.EncodeConfig.IncludeAllRelevantAudio = promptForBool("Include all relevant audio tracks in encoded output files?",
-		"Some discs contain multiple audio tracks in the same language. If this option is enabled, all audio tracks in the same language will be included in the encoded output files. If this option is disabled, only the first audio track in the specified language will be included.",
-		false)
+		// Make the user choose beteween providing a numeric quality and an encoder preset for quality
+		var qualitySelection int
 
-	clear()
+		fmt.Printf("You can provide an encoder preset for quality or a numeric quality value. Numeric values are only recommended if you are familiar with the encoder. Please choose one of the two following options:\n\n")
+		fmt.Printf("1 - Encoder Preset\n")
+		fmt.Printf("2 - Numeric Quality Value\n\n")
 
-	config.EncodeConfig.SubtitleLanguages = promptForStringSlice("What subtitle languages should be included in encoded output files?",
-		"Provide a comma delimited list of ISO 639-2 strings. Example: eng,jpn",
-		"eng")
-	clear()
+		for {
+			fmt.Scanln(&qualitySelection)
 
-	config.EncodeConfig.IncludeAllRelevantSubtitles = promptForBool("Include all relevant subtitle tracks in encoded output files?",
-		"Some discs contain multiple subtitle tracks in the same language. If this option is enabled, all subtitle tracks in the same language will be included in the encoded output files.",
-		false)
+			if qualitySelection == 1 || qualitySelection == 2 {
+				break
+			}
 
-	clear()
+			fmt.Println("Invalid selection. Please choose 1 or 2.")
+		}
+
+		clear()
+
+		if qualitySelection == 1 {
+			encoderPresets, err := getPossibleEncoderPresets(config.EncodeConfig.Encoder)
+
+			if err != nil {
+				return nil, err
+			}
+
+			encPresetPrompt := "What encoder preset should be used by default? A slower preset will result in larger, higher quality output files. Faster presets will result in smaller, lower quality output files. Some experimentation may be necessary."
+
+			config.EncodeConfig.EncoderPreset = promptForSelection(encPresetPrompt, encoderPresets)
+		} else {
+			config.EncodeConfig.Quality = promptForInt("What should the default quality be set to?")
+		}
+
+		clear()
+
+		config.EncodeConfig.AudioLanguages = promptForStringSlice("What audio languages should be included in encoded output files?",
+			"Provide a comma delimited list of ISO 639-2 strings. Example: eng,jpn",
+			"any")
+		clear()
+
+		config.EncodeConfig.IncludeAllRelevantAudio = promptForBool("Include all relevant audio tracks in encoded output files?",
+			"Some discs contain multiple audio tracks in the same language. If this option is enabled, all audio tracks in the same language will be included in the encoded output files. If this option is disabled, only the first audio track in the specified language will be included.",
+			false)
+		clear()
+
+		config.EncodeConfig.SubtitleLanguages = promptForStringSlice("What subtitle languages should be included in encoded output files?",
+			"Provide a comma delimited list of ISO 639-2 strings. Example: eng,jpn",
+			"eng")
+		clear()
+
+		config.EncodeConfig.IncludeAllRelevantSubtitles = promptForBool("Include all relevant subtitle tracks in encoded output files?",
+			"Some discs contain multiple subtitle tracks in the same language. If this option is enabled, all subtitle tracks in the same language will be included in the encoded output files.",
+			false)
+		clear()
+
+		config.EncodeConfig.OutputFileFormat = promptForSelection("What should the default output file format be?", []string{"mkv", "mp4"})
+		clear()
+	} else if encoderSelection == 2 {
+		var presets []string
+
+		presets, err := getPossiblePresets()
+
+		if err != nil {
+			fmt.Printf("Could not parse presets: %v. Falling back to documentation defaults.\n", err)
+			return nil, err
+		}
+
+		config.EncodeConfig.Preset = promptForSelection("What HandBrake preset should be used by default?",
+			presets)
+
+		clear()
+	} else {
+		// Custom HandBrake preset file
+		config.EncodeConfig.PresetFile = promptForString("Provide the path to a custom HandBrake preset file.",
+			"Absolute path to a HandBrake preset file.",
+			"",
+			nil)
+
+		clear()
+
+		// Provide the name of the preset
+		config.EncodeConfig.Preset = promptForString("Provide a name for the custom HandBrake preset.",
+			"Name of the custom HandBrake preset. Case sensitive.",
+			"",
+			nil)
+
+		clear()
+	}
 
 	var handyDir string
 
-	if locationSelection == 1 {
+	if configLocationSelection == 1 {
 		// Get logged in user's home directory
 		usr, err := user.Current()
 
@@ -240,5 +336,5 @@ func promptForConfig(locationSelection int) *handyConfig {
 
 	clear()
 
-	return &config
+	return &config, nil
 }

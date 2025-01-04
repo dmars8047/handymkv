@@ -4,11 +4,6 @@ import (
 	"errors"
 )
 
-const (
-	defaultQuality = 20     // 18
-	defaultEncoder = "h264" //nvenc_h264
-)
-
 var defaultPossibleEncoderValues []string = []string{
 	"svt_av1",
 	"svt_av1_10bit",

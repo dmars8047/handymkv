@@ -55,6 +55,46 @@ func padString(s string, width int) (string, bool) {
 	return s, visibleLen > width
 }
 
+func promptForSelection(prompt string, options []string) string {
+	var input string
+	fmt.Printf("%s\n\n", prompt)
+
+	// list options with a number so the user can select one
+	for i, option := range options {
+		fmt.Printf("%d. %s\n", i+1, option)
+	}
+
+	fmt.Printf("\n(Make a selection by entering the number of the desired value)\n")
+
+	var result string
+
+	for {
+		fmt.Println()
+		fmt.Scanln(&input)
+
+		// Make sure the input is a number
+		selection, err := strconv.Atoi(input)
+
+		if err != nil {
+			fmt.Printf("\nInvalid selection. Please choose a number.\n")
+			continue
+		}
+
+		selection -= 1
+
+		// Make sure the input is within the range of options
+		if selection < 0 || selection >= len(options) {
+			fmt.Printf("\nInvalid selection. Please choose a number within the range of options.\n")
+			continue
+		}
+
+		result = options[selection]
+		break
+	}
+
+	return result
+}
+
 // Prompts the user for a string value. If the user provides an empty string, the default value is returned.
 func promptForString(prompt, explain, defaultValue string, validValues []string) string {
 	var input string
@@ -88,28 +128,24 @@ func promptForString(prompt, explain, defaultValue string, validValues []string)
 }
 
 // Prompts the user for an integer value. If the user provides an empty string, the default value is returned.
-func promptForInt(prompt, explain string, defaultValue int) int {
+func promptForInt(prompt string) int {
 	var input string
 	fmt.Printf("%s\n\n", prompt)
 
-	if explain != "" {
-		fmt.Printf("%s\n", explain)
-	}
+	var value int
+	var err error
 
-	fmt.Printf("Default: %d\n\n", defaultValue)
+	for {
+		fmt.Scanln(&input)
 
-	fmt.Scanln(&input)
-	fmt.Println()
+		value, err = strconv.Atoi(input)
 
-	if input == "" {
-		return defaultValue
-	}
+		if err != nil {
+			fmt.Printf("\nInvalid value. Please enter a number.\n")
+			continue
+		}
 
-	value, err := strconv.Atoi(input)
-
-	if err != nil || value < 0 {
-		fmt.Printf("Invalid value. Using default value: %d\n", defaultValue)
-		return defaultValue
+		break
 	}
 
 	return value

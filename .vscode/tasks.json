@@ -1,0 +1,22 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Create bin folder",
+            "type": "shell",
+            "command": "mkdir -p bin",
+            "problemMatcher": []
+        },
+        {
+            "label": "Build Handy",
+            "type": "shell",
+            "command": "go build -o bin/handy cmd/handy/main.go",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "dependsOn": "Create bin folder",
+            "problemMatcher": []
+        }
+    ]
+}

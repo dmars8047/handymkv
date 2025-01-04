@@ -52,7 +52,6 @@ func main() {
 	}
 
 	if readConfig {
-		// TODO read config file
 		config, err := handy.ReadConfig()
 
 		if err != nil {

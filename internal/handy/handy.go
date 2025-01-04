@@ -176,12 +176,20 @@ func Exec(discId int, quality int, encoder string) error {
 			// Replace spaces with underscores for encoding run.
 			encodingOutputFileName := strings.ReplaceAll(title.FileName, " ", "_")
 
+			if config.EncodeConfig.OutputFileFormat != "" && config.EncodeConfig.OutputFileFormat != ".mkv" {
+				encodingOutputFileName = fmt.Sprintf("%s%s", strings.TrimSuffix(encodingOutputFileName, ".mkv"), config.EncodeConfig.OutputFileFormat)
+			}
+
 			encChannel <- EncodingParams{
 				TitleIndex:          title.Index,
 				MKVOutputPath:       filepath.Join(config.MKVOutputDirectory, title.FileName),
 				HandBrakeOutputPath: filepath.Join(config.HBOutputDirectory, encodingOutputFileName),
 				Quality:             config.EncodeConfig.Quality,
 				Encoder:             config.EncodeConfig.Encoder,
+				EncoderPreset:       config.EncodeConfig.EncoderPreset,
+				OutputFileFormat:    config.EncodeConfig.OutputFileFormat,
+				Preset:              config.EncodeConfig.Preset,
+				PresetFile:          config.EncodeConfig.PresetFile,
 				SubtitleLanguages:   config.EncodeConfig.SubtitleLanguages,
 				AudioLanguages:      config.EncodeConfig.AudioLanguages,
 			}
@@ -237,7 +245,7 @@ func Exec(discId int, quality int, encoder string) error {
 
 	fmt.Printf("\nOperation Complete. Time Elapsed: %s\n", formatTimeElapsedString(processDuration))
 
-	totalSizeRaw, totalSizeEncoded, err := calculateTotalSizes(titles, config)
+	totalSizeRaw, totalSizeEncoded, err := calculateTotalFileSizes(titles, config)
 
 	if err != nil {
 		fmt.Printf("An error occurred while calculating total sizes: %v\n", err)
@@ -255,28 +263,6 @@ func Exec(discId int, quality int, encoder string) error {
 	fmt.Printf("\nEncoded files are located in: %s\n\n", config.HBOutputDirectory)
 
 	return nil
-}
-
-func calculateTotalSizes(titles []TitleInfo, config *handyConfig) (int64, int64, error) {
-	var totalSizeRaw, totalSizeEncoded int64
-
-	for _, title := range titles {
-		rawFilePath := filepath.Join(config.MKVOutputDirectory, title.FileName)
-		rawFileSize, err := getFileSize(rawFilePath)
-		if err != nil {
-			return 0, 0, err
-		}
-		totalSizeRaw += rawFileSize
-
-		encodedFilePath := filepath.Join(config.HBOutputDirectory, strings.ReplaceAll(title.FileName, " ", "_"))
-		encodedFileSize, err := getFileSize(encodedFilePath)
-		if err != nil {
-			return 0, 0, err
-		}
-		totalSizeEncoded += encodedFileSize
-	}
-
-	return totalSizeRaw, totalSizeEncoded, nil
 }
 
 // Prompts the user to create a configuration file.
@@ -307,7 +293,13 @@ func Setup() error {
 	var config *handyConfig
 
 	for {
-		config = promptForConfig(configLocationSelection)
+		config, err = promptForConfig(configLocationSelection)
+
+		if err != nil {
+			fmt.Printf("An error occurred while prompting for configuration values: %v\n", err)
+			return err
+		}
+
 		fmt.Printf("\n%s\n", config.String())
 		fmt.Printf("Accept these settings? [y/N]\n\n")
 
