@@ -13,18 +13,13 @@ const applicationVersion = "0.0.1"
 func main() {
 	// Parse command line args
 	var discId int
-	var quality int
-	var encoder string
 	var version bool
 	var readConfig bool
+	var configure bool
 
 	flag.BoolVar(&version, "v", false, "Version. Prints the version of the application.")
 
-	configFlag := flag.Bool("c", false, "Config. Runs the configuration wizard.")
-
-	flag.IntVar(&quality, "q", -1, "Quality. Sets the quality value to be used for each encoding task. If not provided then the value will be read from cofnig file.")
-
-	flag.StringVar(&encoder, "e", "", "Encoder. If not provided then the value will be read from the config file.")
+	flag.BoolVar(&configure, "c", false, "Configure. Runs the configuration wizard.")
 
 	flag.IntVar(&discId, "d", 0, "Disc. The disc index to rip. If not provided then disc 0 will be ripped.")
 
@@ -39,9 +34,7 @@ func main() {
 		return
 	}
 
-	setup := *configFlag
-
-	if setup {
+	if configure {
 		err := handy.Setup()
 
 		if err != nil {
@@ -76,7 +69,7 @@ func main() {
 		return
 	}
 
-	err = handy.Exec(discId, quality, encoder)
+	err = handy.Exec(discId)
 
 	if err != nil {
 		if err == handy.ErrConfigNotFound {

@@ -15,7 +15,7 @@ import (
 // Executes the main functionality of the program.
 // Reads the configuration file, reads titles from the disc, prompts the user for which titles they want to rip,
 // and processes the selected titles.
-func Exec(discId int, quality int, encoder string) error {
+func Exec(discId int) error {
 	config, err := ReadConfig()
 
 	if err != nil {
@@ -24,16 +24,6 @@ func Exec(discId int, quality int, encoder string) error {
 		}
 
 		return fmt.Errorf("an unexpected error occurred while reading the configuration file: %w", err)
-	}
-
-	// The user provided a quality value via the command line
-	if quality != -1 {
-		config.EncodeConfig.Quality = quality
-	}
-
-	// The user provided an encoder value via the command line
-	if encoder != "" {
-		config.EncodeConfig.Encoder = encoder
 	}
 
 	// Make sure the output directories exist
