@@ -6,15 +6,22 @@ A MakeMKV + HandBrake productivity tool.
 
 Handy is a tool that is designed to automate the process of ripping discs using MakeMKV and then encoding the resulting files using Handbrake.
 
+### Why I Created Handy
+
+I created Handy as a tool to automate the process of ripping and encoding discs. I found the process of manually ripping using MakeMKV and then encoding using HandBrake to be time consuming, disjointed, and error prone. I wanted a tool that would automate the process and provide a more user-friendly experience. Additionally, I wanted to offload the process from my main desktop computer to my home server which is headless and doesn't have a GUI. Handy was created to address these needs.
+
+As I developed Handy I found that I was able to add features that I found useful and that made the process faster and easier. I hope that others will find Handy useful and that it will save them time and effort.
+
 ## Features
 
 - Rip titles from discs using MakeMKV
 - Encode video files using HandBrake
 - Flexible configuration options
 - Clear and concise progress display
-- Concurrency to reduce overall time
+- Concurrency to reduce overall processing time
 - Summary of space saved and time elapsed
 - Automated cleanup of raw unencoded files
+- Parsing of HandBrakeCLI and makemkvcon output to provide a more user-friendly experience
 
 ## Objectives
 
@@ -30,7 +37,11 @@ Output from the process is displayed in a clear and concise manner to keep the u
 
 ### Flexibility
 
-Handy is designed to be flexible. The user can select which titles to rip from the disc and can configure the encoding options to suit their needs.
+Handy is designed to be flexible. The user can select which titles to rip from the disc and can configure the encoding options to suit their needs. Encoding options can be setup in three ways: 
+
+- Using Handy Simplified Encoding Options - Essentially a collection of settings which are meant to address the most common use cases. These settings are designed to be easy to use and understand. These are gathered via a series of prompts during the configuration process with sensible defaults (where possible).
+- Using Built-in HandBrake Presets - Handy can be setup to use a specific built-in HandBrake preset. This option is for users who are familiar with HandBrake and have a specific preset they want to use.
+- Using a Custom HandBrake Preset File - Handy can be setup to use a custom HandBrake preset file. This option offers the most granular control over the encoding process but requires the user to create a HandBrake preset file.
 
 ## Prerequisites
 
@@ -58,13 +69,10 @@ Handy has a number of command line options that can be used to control its behav
 
 ```shell
 Usage of handy:
-  -c    Config. Runs the configuration wizard.
+  -c    Configure. Runs the configuration wizard.
   -d int
         Disc. The disc index to rip. If not provided then disc 0 will be ripped.
-  -e string
-        Encoder. If not provided then the value will be read from the config file.
-  -q int
-        Quality. Sets the quality value to be used for each encoding task. If not provided then the value will be read from cofnig file. (default -1)
+  -r    Read. Reads and outputs the first encountered configuration file. The current working directory is searched first, then the user-level configuration.
   -v    Version. Prints the version of the application.
 ```
 
@@ -109,4 +117,4 @@ Note: If there is a `config.json` file in the working directory at execution tim
 
 ## A Note on Concurrency
 
-Handy will attempt to execute tasks concurrently to reduce the overall time taken to complete the process. Opportunities for concurrency are limited by the dependencies between tasks, for example, encoding cannot begin until ripping is complete. Encoding tasks also tend to be resource intensive so the number of concurrent encoding tasks is limited to avoid overloading the system. When a ripping task is complete, it will be handed off the next available encoding task. This process will continue until all indicated titles have been ripped and encoded.
+Handy will attempt to execute tasks concurrently to reduce the overall time taken to complete the process. However, encoding tasks are resource intensive and running mutiple encoding tasks is likely to slow down the overall process. Likewise ripping tasks are bottlenecked by the speed of the disc drive. For this reason Handy will execute ripping and encoding pipelines concurrently but each task in those pipelines will be executed sequentially.

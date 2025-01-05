@@ -131,7 +131,7 @@ func Exec(discId int) error {
 	fmt.Println()
 
 	ctx, cancelProcessing := context.WithCancel(context.Background())
-	var encChannel = make(chan EncodingParams, 1)
+	var encChannel = make(chan EncodingParams)
 	var wg sync.WaitGroup
 
 	processStartTime := time.Now()
