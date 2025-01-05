@@ -25,7 +25,7 @@ func PrintLogo() {
 	sb.WriteString("██╔══██║██╔══██║██║╚██╗██║██║  ██║  ╚██╔╝  \n")
 	sb.WriteString("██║  ██║██║  ██║██║ ╚████║██████╔╝   ██║   \n")
 	sb.WriteString("╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═════╝    ╚═╝   \n")
-	sb.WriteString("A MakeMKV + HandBrake productivity tool by Herbzy\n")
+	sb.WriteString("A MakeMKV + HandBrake productivity tool\n")
 
 	fmt.Printf("\n%s\n", sb.String())
 }
