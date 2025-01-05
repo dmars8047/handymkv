@@ -6,9 +6,9 @@ A MakeMKV + HandBrake productivity tool.
 
 Handy is a tool that is designed to automate the process of ripping discs using MakeMKV and then encoding the resulting files using Handbrake.
 
-### Why I Created Handy
+#### Why I Created Handy
 
-I created Handy as a tool to automate the process of ripping and encoding discs. I found the process of manually ripping using MakeMKV and then encoding using HandBrake to be time consuming, disjointed, and error prone. I wanted a tool that would automate the process and provide a more user-friendly experience. Additionally, I wanted to offload the process from my main desktop computer to my home server which is headless and doesn't have a GUI. Handy was created to address these needs.
+I found the process of manually ripping using MakeMKV and then encoding using HandBrake to be time consuming, disjointed, and error prone. I wanted a tool that would automate the process and provide a more user-friendly experience. Additionally, I wanted to offload the process from my main desktop computer to my home server which is headless and doesn't have a GUI. Handy was created to address these needs.
 
 As I developed Handy I found that I was able to add features that I found useful and that made the process faster and easier. I hope that others will find Handy useful and that it will save them time and effort.
 
