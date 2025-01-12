@@ -74,13 +74,13 @@ func getUserConfigPath() (string, error) {
 		if appData == "" {
 			return "", fmt.Errorf("APPDATA environment variable is not set")
 		}
-		return filepath.Join(appData, "handy", configFileName), nil
+		return filepath.Join(appData, "handymkv", configFileName), nil
 	} else {
 		usr, err := user.Current()
 		if err != nil {
 			return "", fmt.Errorf("error getting current user: %w", err)
 		}
-		return filepath.Join(usr.HomeDir, ".config", "handy", configFileName), nil
+		return filepath.Join(usr.HomeDir, ".config", "handymkv", configFileName), nil
 	}
 }
 
@@ -308,7 +308,7 @@ func promptForConfig(configLocationSelection int) (*handyConfig, error) {
 			fmt.Printf("Error getting current user: %v\n", err)
 		}
 
-		handyDir = filepath.Join(usr.HomeDir, "handy")
+		handyDir = filepath.Join(usr.HomeDir, "handymkv")
 	} else {
 		handyDir = "."
 	}
