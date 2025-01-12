@@ -1,4 +1,4 @@
-package handy
+package hmkv
 
 import (
 	"bufio"

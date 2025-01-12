@@ -1,4 +1,4 @@
-package handy
+package hmkv
 
 import (
 	"errors"
@@ -24,7 +24,7 @@ func getFileSize(filePath string) (int64, error) {
 	return fileInfo.Size(), nil
 }
 
-func deleteRawFiles(config *handyConfig) {
+func deleteRawFiles(config *handyMKVConfig) {
 	fmt.Printf("\nDeleting raw unencoded files...\n\n")
 
 	// Delete entire MKV output directory
@@ -38,7 +38,7 @@ func deleteRawFiles(config *handyConfig) {
 }
 
 // Calculates the total size of the raw and encoded files for all selected titles.
-func calculateTotalFileSizes(titles []TitleInfo, config *handyConfig) (int64, int64, error) {
+func calculateTotalFileSizes(titles []TitleInfo, config *handyMKVConfig) (int64, int64, error) {
 	var totalSizeRaw, totalSizeEncoded int64
 
 	for _, title := range titles {

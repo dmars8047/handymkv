@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/dmars8047/handy/internal/handy"
+	"github.com/dmars8047/handymkv/internal/hmkv"
 )
 
 const applicationVersion = "0.0.1"
@@ -27,15 +27,15 @@ func main() {
 
 	flag.Parse()
 
-	handy.PrintLogo()
+	hmkv.PrintLogo()
 
 	if version {
-		fmt.Printf("Handy version %s\n\n", applicationVersion)
+		fmt.Printf("HandyMKV version %s\n\n", applicationVersion)
 		return
 	}
 
 	if configure {
-		err := handy.Setup()
+		err := hmkv.Setup()
 
 		if err != nil {
 			fmt.Printf("An error occurred during the setup process.\nError: %v\n", err)
@@ -45,10 +45,10 @@ func main() {
 	}
 
 	if readConfig {
-		config, err := handy.ReadConfig()
+		config, err := hmkv.ReadConfig()
 
 		if err != nil {
-			if err == handy.ErrConfigNotFound {
+			if err == hmkv.ErrConfigNotFound {
 				fmt.Printf("Config file not found. Please run the configuration wizard with 'handy -c'.\n\n")
 				return
 			}
@@ -69,18 +69,18 @@ func main() {
 		return
 	}
 
-	err = handy.Exec(discId)
+	err = hmkv.Exec(discId)
 
 	if err != nil {
-		if err == handy.ErrConfigNotFound {
-			fmt.Printf("Config file not found. Please run the configuration wizard with 'handy -c'.\n\n")
+		if err == hmkv.ErrConfigNotFound {
+			fmt.Printf("Config file not found. Please run the configuration wizard with 'handymkv -c'.\n\n")
 			return
-		} else if err == handy.ErrTitlesDiscRead {
+		} else if err == hmkv.ErrTitlesDiscRead {
 			fmt.Printf("An error occurred while reading titles from disc %d. Please ensure the disc is inserted and try again.\n\n", discId)
 			return
 		}
 
-		fmt.Printf("An error occurred during handy execution process.\n\nError %v\n\n", err)
+		fmt.Printf("An error occurred during handymkv execution process.\n\nError %v\n\n", err)
 	}
 }
 

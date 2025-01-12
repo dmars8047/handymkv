@@ -8,9 +8,9 @@
             "problemMatcher": []
         },
         {
-            "label": "Build Handy",
+            "label": "Build HandyMKV",
             "type": "shell",
-            "command": "go build -o bin/handy cmd/handy/main.go",
+            "command": "go build -o bin/handymkv cmd/handymkv/main.go",
             "group": {
                 "kind": "build",
                 "isDefault": true

@@ -12,7 +12,7 @@
             // externalTerminal
             "console": "externalTerminal",
             "mode": "auto",
-            "program": "${workspaceFolder}/cmd/handy/main.go",
+            "program": "${workspaceFolder}/cmd/handymkv/main.go",
             "env": {},
             "args": ["-c"]
         },

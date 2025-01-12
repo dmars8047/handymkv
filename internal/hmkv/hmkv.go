@@ -1,4 +1,4 @@
-package handy
+package hmkv
 
 import (
 	"context"
@@ -110,7 +110,7 @@ func Exec(discId int) error {
 	}
 
 	// Create output directory dirSlug with timestamp
-	dirSlug := fmt.Sprintf("handy_%s", time.Now().Format("2006-01-02_15-04-05"))
+	dirSlug := fmt.Sprintf("handymkv_%s", time.Now().Format("2006-01-02_15-04-05"))
 
 	config.MKVOutputDirectory = filepath.Join(config.MKVOutputDirectory, dirSlug)
 
@@ -282,7 +282,7 @@ func Setup() error {
 		return nil
 	}
 
-	var config *handyConfig
+	var config *handyMKVConfig
 
 	for {
 		config, err = promptForConfig(configLocationSelection)

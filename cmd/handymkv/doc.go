@@ -1,7 +1,7 @@
 package main
 
 /*
-Package main is the entry point for the Handy application.
+Package main is the entry point for the HandyMKV application.
 
 # Overview
 

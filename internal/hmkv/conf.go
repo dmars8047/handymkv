@@ -1,4 +1,4 @@
-package handy
+package hmkv
 
 import (
 	"encoding/json"
@@ -25,14 +25,14 @@ var ErrConfigNotFound = errors.New("config file not found")
 
 type configFileLocation int
 
-type handyConfig struct {
+type handyMKVConfig struct {
 	EncodeConfig       EncodingParams `json:"encoding_params"`
 	MKVOutputDirectory string         `json:"mkv_output_directory"`
 	HBOutputDirectory  string         `json:"handbrake_output_directory"`
 	DeleteRawMKVFiles  bool           `json:"delete_raw_mkv_files"`
 }
 
-func (config *handyConfig) String() string {
+func (config *handyMKVConfig) String() string {
 	var sb strings.Builder
 
 	sb.WriteString("Encode Settings\n\n")
@@ -85,7 +85,7 @@ func getUserConfigPath() (string, error) {
 }
 
 // Reads the config file and returns a config struct.
-func ReadConfig() (*handyConfig, error) {
+func ReadConfig() (*handyMKVConfig, error) {
 	// Check in the current working directory
 	filePath := fmt.Sprintf("./%s", configFileName)
 	if _, err := os.Stat(filePath); err == nil {
@@ -105,13 +105,13 @@ func ReadConfig() (*handyConfig, error) {
 }
 
 // Helper function to read and unmarshal the config file
-func readConfigFile(filePath string) (*handyConfig, error) {
+func readConfigFile(filePath string) (*handyMKVConfig, error) {
 	fileData, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("error reading config file: %w", err)
 	}
 
-	var cfg handyConfig
+	var cfg handyMKVConfig
 	err = json.Unmarshal(fileData, &cfg)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing config file: %w", err)
@@ -121,7 +121,7 @@ func readConfigFile(filePath string) (*handyConfig, error) {
 }
 
 // Creates a config file with all global defaults. The file will be written to the specified location.
-func createConfigFile(location configFileLocation, config *handyConfig, overwrite bool) error {
+func createConfigFile(location configFileLocation, config *handyMKVConfig, overwrite bool) error {
 	var configPath string
 
 	switch location {
@@ -172,14 +172,14 @@ func createConfigFile(location configFileLocation, config *handyConfig, overwrit
 	return nil
 }
 
-// Prompts the user for configuration values and returns a new HandyConfig object.
-func promptForConfig(configLocationSelection int) (*handyConfig, error) {
-	var config handyConfig
+// Prompts the user for configuration values and returns a new HandyMKVConfig object.
+func promptForConfig(configLocationSelection int) (*handyMKVConfig, error) {
+	var config handyMKVConfig
 
 	clear()
-	// Simplified handy encoder settings vs selecting a handbrake preset
+	// Simplified handymkv encoder settings vs selecting a handbrake preset
 	fmt.Printf("You will now answer a series of questions to provide default values for your configuration. Please choose one of the three following options for encoding settings:\n\n")
-	fmt.Println("1 - Use Handy Simplified Encoder Settings")
+	fmt.Println("1 - Use HandyMKV Simplified Encoder Settings")
 	fmt.Println("2 - Use a Built-In HandBrake Preset")
 	fmt.Println("3 - Provide a Custom HandBrake Preset File")
 	fmt.Println()
@@ -298,7 +298,7 @@ func promptForConfig(configLocationSelection int) (*handyConfig, error) {
 		clear()
 	}
 
-	var handyDir string
+	var handyMKVDir string
 
 	if configLocationSelection == 1 {
 		// Get logged in user's home directory
@@ -308,12 +308,12 @@ func promptForConfig(configLocationSelection int) (*handyConfig, error) {
 			fmt.Printf("Error getting current user: %v\n", err)
 		}
 
-		handyDir = filepath.Join(usr.HomeDir, "handymkv")
+		handyMKVDir = filepath.Join(usr.HomeDir, "handymkv")
 	} else {
-		handyDir = "."
+		handyMKVDir = "."
 	}
 
-	defaultMKVOutputDirectory := filepath.Join(handyDir, "mkvoutput")
+	defaultMKVOutputDirectory := filepath.Join(handyMKVDir, "mkvoutput")
 
 	config.MKVOutputDirectory = promptForString("Provide a path to a directory that raw unencoded MKV files can be staged.",
 		fmt.Sprintf("Absolute path to a directory. Example: %s", defaultMKVOutputDirectory),
@@ -322,7 +322,7 @@ func promptForConfig(configLocationSelection int) (*handyConfig, error) {
 
 	clear()
 
-	defaultHBOutputDirectory := filepath.Join(handyDir, "hboutput")
+	defaultHBOutputDirectory := filepath.Join(handyMKVDir, "hboutput")
 
 	config.HBOutputDirectory = promptForString("Provide a path to a directory that HandBrake encoded output files can be placed. Using the same directory as the MKV output directory is not recommended.",
 		fmt.Sprintf("Absolute path to a directory. Example: %s", defaultHBOutputDirectory),
