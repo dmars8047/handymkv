@@ -19,12 +19,10 @@ const (
 func PrintLogo() {
 	var sb strings.Builder
 
-	sb.WriteString("██╗  ██╗ █████╗ ███╗   ██╗██████╗ ██╗   ██╗\n")
-	sb.WriteString("██║  ██║██╔══██╗████╗  ██║██╔══██╗╚██╗ ██╔╝\n")
-	sb.WriteString("███████║███████║██╔██╗ ██║██║  ██║ ╚████╔╝ \n")
-	sb.WriteString("██╔══██║██╔══██║██║╚██╗██║██║  ██║  ╚██╔╝  \n")
-	sb.WriteString("██║  ██║██║  ██║██║ ╚████║██████╔╝   ██║   \n")
-	sb.WriteString("╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═════╝    ╚═╝   \n")
+	sb.WriteString("╦ ╦┌─┐┌┐┌┌┬┐┬ ┬╔╦╗╦╔═╦  ╦\n")
+	sb.WriteString("╠═╣├─┤│││ ││└┬┘║║║╠╩╗╚╗╔╝\n")
+	sb.WriteString("╩ ╩┴ ┴┘└┘─┴┘ ┴ ╩ ╩╩ ╩ ╚╝ \n")
+
 	sb.WriteString("A MakeMKV + HandBrake productivity tool\n")
 
 	fmt.Printf("\n%s\n", sb.String())

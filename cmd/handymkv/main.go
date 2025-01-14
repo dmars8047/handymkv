@@ -35,7 +35,14 @@ func main() {
 	}
 
 	if configure {
-		err := hmkv.Setup()
+		err := checkForPrerequisites()
+
+		if err != nil {
+			fmt.Printf("Prerequisite not found or inaccessible. Make sure makemkvcon and HandBrakeCLI are accessible via the PATH.\nExiting.\n")
+			return
+		}
+
+		err = hmkv.Setup()
 
 		if err != nil {
 			fmt.Printf("An error occurred during the setup process.\nError: %v\n", err)

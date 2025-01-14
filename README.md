@@ -8,7 +8,7 @@ HandyMKV is a tool that is designed to automate the process of ripping discs usi
 
 #### Why I Created HandyMKV
 
-I found the process of manually ripping using MakeMKV and then encoding using HandBrake to be time consuming, disjointed, and error prone. I wanted a tool that would automate the process and provide a more user-friendly experience. Additionally, I wanted to offload the process from my main desktop computer to my home server which is headless and doesn't have a GUI. HandyMKV was created to address these needs.
+I found the process of manually ripping using MakeMKV and then encoding using HandBrake to be time consuming, disjointed, and error prone. I wanted a tool that would automate the process and provide a more user-friendly experience. Additionally, I wanted to offload the process from my main desktop computer to my home server which is headless and does not have a GUI. HandyMKV was created to address these needs.
 
 As I developed HandyMKV, I found that I was able to add features that I found useful and that made the process faster and easier. I hope that others will find HandyMKV useful and that it will save them time and effort.
 
@@ -21,7 +21,7 @@ As I developed HandyMKV, I found that I was able to add features that I found us
 - Concurrency to reduce overall processing time
 - Summary of space saved and time elapsed
 - Automated cleanup of raw unencoded files
-- Parsing of HandBrakeCLI and makemkvcon output to provide a more user-friendly experience
+- Parsing of `HandBrakeCLI` and `makemkvcon` output to provide a more user-friendly experience
 
 ## Objectives
 
@@ -65,7 +65,7 @@ Documentation for Handbrake can be found [here](https://handbrake.fr/docs/en/lat
 
 ## Command Line Options
 
-HandyMKV has a number of command line options that can be used to control its behaviour. These options are described below.
+HandyMKV has a number of command line options that can be used to control its behavior. These options are described below.
 
 ```shell
 Usage of handymkv:
@@ -84,7 +84,7 @@ HandyMKV is a Go application and can be installed using the following command:
 go install github.com/dmars8047/handymkv/cmd/handymkv@latest
 ```
 
-Pre-built binaries can be downloaded from the [releases](https://marshall-labs.com/handy/releases/latest) page.
+Prebuilt binaries can be downloaded from the [releases](https://marshall-labs.com/handy/releases/latest) page.
 
 ## Basic Usage
 
@@ -107,7 +107,7 @@ handymkv
 
 This will first read the titles on the disc and prompt you to select which titles to rip. Once you have selected the titles to rip, the process will begin. The progress of the process will be displayed in the terminal.
 
-![alt text](https://github.com/dmars8047/handymkv/blob/develop/doc/handy_status.png?raw=true)
+![alt text](https://github.com/dmars8047/handymkv/blob/develop/doc/handymkv_disc_read_example.png?raw=true)
 
 Once the process is complete, a summary will be displayed showing the space saved and the time taken to complete the process.
 
@@ -117,4 +117,4 @@ Note: If there is a `config.json` file in the working directory at execution tim
 
 ## A Note on Concurrency
 
-HandyMKV will attempt to execute tasks concurrently to reduce the overall time taken to complete the process. However, encoding tasks are resource intensive and running mutiple encoding tasks is likely to slow down the overall process. Likewise ripping tasks are bottlenecked by the speed of the disc drive. For this reason HandyMKV will execute ripping and encoding pipelines concurrently but each task in those pipelines will be executed sequentially.
+HandyMKV will attempt to execute tasks concurrently to reduce the overall time taken to complete the process. However, encoding tasks are resource intensive and running multiple encoding tasks is likely to slow down the overall process. Likewise ripping tasks are bottle-necked by the speed of the disc drive. For this reason HandyMKV will execute ripping and encoding pipelines concurrently but each task in those pipelines will be executed sequentially.
