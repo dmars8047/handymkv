@@ -105,7 +105,7 @@ Then to rip and encode a disc, run the following command:
 handymkv
 ```
 
-This will first read the titles on the disc and prompt you to select which titles to rip. Once you have selected the titles to rip, the process will begin. The progress of the process will be displayed in the terminal.
+This will first read the titles on the disc and prompt you to select which titles to rip. Titles are selected by providing the index of each title. Multiple titles can be selected by providing a comma delimited list. Example: `0, 1, 3,4`. Once you have selected the titles to rip, the process will begin. The progress of the process will be displayed in the terminal.
 
 ![alt text](https://github.com/dmars8047/handymkv/blob/develop/doc/handymkv_disc_read_example.png?raw=true)
 
