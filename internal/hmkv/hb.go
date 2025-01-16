@@ -25,6 +25,14 @@ type EncodingParams struct {
 	PresetFile                  string   `json:"preset_file,omitempty"`
 }
 
+type HandBrakePresetFile struct {
+	PresetList []HandBrakePreset `json:"PresetList"`
+}
+
+type HandBrakePreset struct {
+	PresetName string `json:"PresetName"`
+}
+
 func encode(ctx context.Context, params *EncodingParams) error {
 	var args []string = []string{
 		"--input", params.MKVOutputPath,

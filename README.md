@@ -55,6 +55,10 @@ MakeMKV can be downloaded from [here](https://www.makemkv.com/).
 
 Documentation for makemkvcon can be found [here](https://www.makemkv.com/developers/usage.txt).
 
+#### A Note for Mac Users 
+
+`makemkvcon` is not included in the $PATH by default when MakeMKV is installed. However, the binary is included in the MakeMKV.app bundle. The binary can be found at `/Applications/MakeMKV.app/Contents/MacOS/makemkvcon`. You can add this to your $PATH or create a symlink to it in a directory that is in your $PATH.
+
 ### Handbrake
 
 Handbrake is a tool that is used to encode video files. The `HandBrakeCLI` command is used to interact with Handbrake from the command line. The `HandBrakeCLI` command must be in the system path for HandyMKV to work.
