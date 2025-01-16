@@ -153,7 +153,7 @@ func Exec(discId int) error {
 			ripErr := ripTitle(ctx, &title, config.MKVOutputDirectory)
 
 			if ripErr != nil {
-				tracker.setError(fmt.Errorf("an error occurred while ripping title: %w", ripErr))
+				tracker.setError(ripErr)
 				cancelProcessing()
 				return
 			}

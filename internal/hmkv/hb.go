@@ -39,11 +39,11 @@ func encode(ctx context.Context, params *EncodingParams) error {
 		"--output", params.HandBrakeOutputPath,
 	}
 
-	if params.OutputFileFormat != "" {
-		args = append(args, "--preset-import-file", params.OutputFileFormat)
-	}
-
 	if params.Preset != "" {
+		if params.PresetFile != "" {
+			args = append(args, "--preset-import-file", params.PresetFile)
+		}
+
 		args = append(args, "--preset", params.Preset)
 	} else {
 		args = append(args, "--encoder", params.Encoder)

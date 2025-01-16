@@ -87,7 +87,7 @@ func main() {
 			return
 		}
 
-		fmt.Printf("An error occurred during handymkv execution process.\n\nError %v\n\n", err)
+		fmt.Printf("\nAn error occurred during handymkv execution process.\n\nError - %v\n\n", err)
 	}
 }
 
