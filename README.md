@@ -88,7 +88,9 @@ HandyMKV is a Go application and can be installed using the following command:
 go install github.com/dmars8047/handymkv/cmd/handymkv@latest
 ```
 
-Prebuilt binaries can be downloaded from the [releases](https://marshall-labs.com/handy/releases/latest) page.
+This requires Go to be installed on the system. Go can be installed from [here](https://go.dev/doc/install).
+
+Prebuilt binaries may be provided in the future.
 
 ## Basic Usage
 
