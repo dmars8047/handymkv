@@ -28,9 +28,9 @@ type TitleInfo struct {
 }
 
 func ripTitle(ctx context.Context, title *TitleInfo, destDir string) error {
+	cmd := exec.CommandContext(ctx, "makemkvcon", "mkv", "disc:0", fmt.Sprintf("%d", title.Index), destDir)
 
-	cmdOut, err := exec.CommandContext(ctx, "sh", "-c", fmt.Sprintf("makemkvcon mkv disc:0 %d %s", title.Index, destDir)).Output()
-
+	cmdOut, err := cmd.Output()
 	if err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func getTitlesFromDisc(discId int) ([]TitleInfo, error) {
 	titles := make([]TitleInfo, 0)
 
 	// Run the command to get the output
-	cmdOut, err := exec.Command("sh", "-c", fmt.Sprintf("makemkvcon -r info disc:%d", discId)).Output()
+	cmdOut, err := exec.Command("makemkvcon", "-r", "info", fmt.Sprintf("disc:%d", discId)).Output()
 
 	if err != nil {
 		return titles, fmt.Errorf("error running command: %v", err)
