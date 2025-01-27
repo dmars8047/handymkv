@@ -3,7 +3,9 @@ package hmkv
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -38,7 +40,21 @@ func ripTitle(ctx context.Context, title *TitleInfo, destDir string) error {
 	success := strings.Contains(string(cmdOut), "Copy complete. 1 titles saved.")
 
 	if !success {
-		return fmt.Errorf("an error occurred while ripping title from disc")
+		// write cmdOut to a log file in the dest dir
+		logFilePath := filepath.Join(destDir, "rip_err.log")
+		f, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+
+		if err != nil {
+			return fmt.Errorf("ripping title from disc was not successful - an error occured while creating log file: %w", err)
+		}
+
+		defer f.Close()
+
+		if _, err := f.WriteString(string(cmdOut)); err != nil {
+			return fmt.Errorf("failed to write to log file: %w", err)
+		}
+
+		return fmt.Errorf("ripping title from disc was not successful - mkv error details can be found in log file %s", logFilePath)
 	}
 
 	return nil

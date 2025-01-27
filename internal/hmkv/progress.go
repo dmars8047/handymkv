@@ -79,11 +79,11 @@ func (pt *progressTracker) refreshDisplay() {
 		encodingCol, _ := padString(colorize(status.Encoding, encodingColor), 20)
 
 		if titleTooLong {
-			titleSpillOver := titleCol[29:]
-			titleCol = titleCol[0:28]
+			titleSpillOver := titleCol[27:]
+			titleCol = fmt.Sprintf("%s   ", titleCol[0:27])
 			fmt.Printf("%s%s%s\n", titleCol, rippingCol, encodingCol)
 			fmt.Printf("%s\n", titleSpillOver)
-			return
+			continue
 		}
 
 		// Print the row

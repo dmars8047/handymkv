@@ -37,7 +37,7 @@ func (config *handyMKVConfig) String() string {
 
 	sb.WriteString("Encode Settings\n\n")
 
-	if config.EncodeConfig.Preset == "" {
+	if config.EncodeConfig.Preset == "" && config.EncodeConfig.PresetFile == "" {
 		sb.WriteString(fmt.Sprintf("Encoder: %s\n", config.EncodeConfig.Encoder))
 
 		if config.EncodeConfig.EncoderPreset != "" {
@@ -52,10 +52,14 @@ func (config *handyMKVConfig) String() string {
 		sb.WriteString(fmt.Sprintf("Include All Relevant Subtitles: %t\n", config.EncodeConfig.IncludeAllRelevantSubtitles))
 		sb.WriteString(fmt.Sprintf("Output File Format: %s\n", config.EncodeConfig.OutputFileFormat))
 	} else {
-		sb.WriteString(fmt.Sprintf("Preset: %s\n", config.EncodeConfig.Preset))
-
 		if config.EncodeConfig.PresetFile != "" {
 			sb.WriteString(fmt.Sprintf("Preset File: %s\n", config.EncodeConfig.PresetFile))
+
+			if config.EncodeConfig.Preset != "" {
+				sb.WriteString(fmt.Sprintf("Custom HandBrake Preset: %s\n", config.EncodeConfig.Preset))
+			}
+		} else {
+			sb.WriteString(fmt.Sprintf("HandBrake Preset: %s\n", config.EncodeConfig.Preset))
 		}
 	}
 
@@ -94,9 +98,11 @@ func ReadConfig() (*handyMKVConfig, error) {
 
 	// Check in the user configuration directory
 	userConfigPath, err := getUserConfigPath()
+
 	if err != nil {
 		return nil, err
 	}
+
 	if _, err := os.Stat(userConfigPath); err == nil {
 		return readConfigFile(userConfigPath)
 	}
@@ -112,12 +118,56 @@ func readConfigFile(filePath string) (*handyMKVConfig, error) {
 	}
 
 	var cfg handyMKVConfig
+
 	err = json.Unmarshal(fileData, &cfg)
+
 	if err != nil {
 		return nil, fmt.Errorf("error parsing config file: %w", err)
 	}
 
+	if cfg.EncodeConfig.PresetFile != "" {
+		presetFile, err := readPresetFile(cfg.EncodeConfig.PresetFile)
+
+		if err != nil {
+			return nil, fmt.Errorf("error reading HandBrake preset file: %w", err)
+		}
+
+		if len(presetFile.PresetList) < 1 {
+			return nil, fmt.Errorf("no presets found in the HandBrake preset file: %s", cfg.EncodeConfig.PresetFile)
+		}
+
+		if len(presetFile.PresetList) > 0 {
+			cfg.EncodeConfig.Preset = presetFile.PresetList[0].PresetName
+		}
+	}
+
 	return &cfg, nil
+}
+
+// Reads a HandBrake preset file and returns a struct containing the contained presets.
+func readPresetFile(filePath string) (*HandBrakePresetFile, error) {
+	var presetFile HandBrakePresetFile
+
+	// Open the file
+	file, err := os.Open(filePath)
+
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("JSON preset file does not exist: %s", filePath)
+		}
+		return nil, fmt.Errorf("error opening file: %w", err)
+	}
+
+	defer file.Close()
+
+	// Decode the JSON file
+	decoder := json.NewDecoder(file)
+
+	if err := decoder.Decode(&presetFile); err != nil {
+		return nil, fmt.Errorf("error decoding JSON preset file: %w", err)
+	}
+
+	return &presetFile, nil
 }
 
 // Creates a config file with all global defaults. The file will be written to the specified location.
@@ -281,19 +331,38 @@ func promptForConfig(configLocationSelection int) (*handyMKVConfig, error) {
 
 		clear()
 	} else {
-		// Custom HandBrake preset file
-		config.EncodeConfig.PresetFile = promptForString("Provide the path to a custom HandBrake preset file.",
-			"Absolute path to a HandBrake preset file.",
-			"",
-			nil)
+		for {
+			// Custom HandBrake preset file
+			config.EncodeConfig.PresetFile = promptForString("Provide the path to a custom HandBrake preset file.",
+				"Absolute path to a HandBrake preset file. Note that if the file contains more than one preset, only the first preset in the file will be used.",
+				"",
+				nil)
 
-		clear()
+			if config.EncodeConfig.PresetFile == "" {
+				fmt.Printf("Invalid input.\n\n")
+				continue
+			}
 
-		// Provide the name of the preset
-		config.EncodeConfig.Preset = promptForString("Provide a name for the custom HandBrake preset.",
-			"Name of the custom HandBrake preset. Case sensitive.",
-			"",
-			nil)
+			presetFile, err := readPresetFile(config.EncodeConfig.PresetFile)
+
+			if err != nil {
+				fmt.Printf("Error reading HandBrake preset file - %v\n\n", err)
+				continue
+			}
+
+			if len(presetFile.PresetList) < 1 {
+				fmt.Printf("No presets found in the HandBrake preset file. Please provide a valid HandBrake preset file.\n\n")
+				continue
+			}
+
+			// Use the first preset in the file
+			if presetFile.PresetList[0].PresetName == "" {
+				fmt.Printf("Presets in the HandBrake preset file must have a name. Please provide a valid HandBrake preset file.\n\n")
+			}
+
+			config.EncodeConfig.Preset = presetFile.PresetList[0].PresetName
+			break
+		}
 
 		clear()
 	}

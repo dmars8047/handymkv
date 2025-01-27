@@ -8,7 +8,7 @@ import (
 	"github.com/dmars8047/handymkv/internal/hmkv"
 )
 
-const applicationVersion = "0.1.0"
+const applicationVersion = "0.1.2"
 
 func main() {
 	// Parse command line args
@@ -87,7 +87,7 @@ func main() {
 			return
 		}
 
-		fmt.Printf("An error occurred during handymkv execution process.\n\nError %v\n\n", err)
+		fmt.Printf("\nAn error occurred during handymkv execution process.\n\nError - %v\n\n", err)
 	}
 }
 

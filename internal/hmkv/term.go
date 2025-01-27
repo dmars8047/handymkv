@@ -100,6 +100,10 @@ func promptForString(prompt, explain, defaultValue string, validValues []string)
 
 	if explain != "" {
 		fmt.Printf("%s\n", explain)
+
+		if len(validValues) == 0 && defaultValue == "" {
+			fmt.Println()
+		}
 	}
 
 	if len(validValues) > 0 {
