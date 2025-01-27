@@ -150,7 +150,7 @@ func Exec(discId int) error {
 
 			tracker.applyChangeAndDisplay(title.Index, applyInProgress)
 
-			ripErr := ripTitle(ctx, &title, config.MKVOutputDirectory)
+			ripErr := ripTitle(ctx, &title, config.MKVOutputDirectory, discId)
 
 			if ripErr != nil {
 				tracker.setError(ripErr)

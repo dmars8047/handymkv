@@ -29,8 +29,8 @@ type TitleInfo struct {
 	FileName  string
 }
 
-func ripTitle(ctx context.Context, title *TitleInfo, destDir string) error {
-	cmd := exec.CommandContext(ctx, "makemkvcon", "mkv", "disc:0", fmt.Sprintf("%d", title.Index), destDir)
+func ripTitle(ctx context.Context, title *TitleInfo, destDir string, discId int) error {
+	cmd := exec.CommandContext(ctx, "makemkvcon", "mkv", fmt.Sprintf("disc:%d", discId), fmt.Sprintf("%d", title.Index), destDir)
 
 	cmdOut, err := cmd.Output()
 	if err != nil {
