@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -86,6 +87,11 @@ func getTitlesFromDisc(discId int) ([]TitleInfo, error) {
 			index, _ := strconv.Atoi(strings.TrimPrefix(parts[0], "TINFO:"))
 			code := parts[1]
 			value := strings.Trim(parts[3], "\"")
+
+			// Windows carriage return fix
+			if runtime.GOOS == "windows" {
+				value = strings.TrimRight(value, "\"\r")
+			}
 
 			// Ensure the titleData map has an entry for this title index
 			if titleData[index] == nil {
