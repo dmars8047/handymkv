@@ -63,9 +63,9 @@ Documentation for makemkvcon can be found [here](https://www.makemkv.com/develop
 
 Handbrake is a tool that is used to encode video files. The `HandBrakeCLI` command is used to interact with Handbrake from the command line. The `HandBrakeCLI` command must be in the system path for HandyMKV to work.
 
-Handbrake can be downloaded from [here](https://handbrake.fr/). Note: Handbrake is free to use. See the Handbrake website for more information.
+The HandBrakeCLI can be installed from [here](https://handbrake.fr/downloads2.php). Note: HandBrake is free to use. See the HandBrake website for more information.
 
-Documentation for Handbrake can be found [here](https://handbrake.fr/docs/en/latest/cli/cli-guide.html).
+Documentation for the HandBrakeCLI can be found [here](https://handbrake.fr/docs/en/latest/cli/cli-guide.html). This is not needed for usage with HandyMKV but is useful for context.
 
 ## Command Line Options
 
