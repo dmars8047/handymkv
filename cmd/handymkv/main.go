@@ -4,26 +4,25 @@ import (
 	"flag"
 	"fmt"
 	"os/exec"
+	"strconv"
+	"strings"
 
 	"github.com/dmars8047/handymkv/internal/hmkv"
 )
 
-const applicationVersion = "0.1.2"
+const applicationVersion = "0.1.5"
 
 func main() {
 	// Parse command line args
-	var discId int
+	var discIds string
 	var version bool
 	var readConfig bool
 	var configure bool
 
 	flag.BoolVar(&version, "v", false, "Version. Prints the version of the application.")
-
 	flag.BoolVar(&configure, "c", false, "Configure. Runs the configuration wizard.")
-
-	flag.IntVar(&discId, "d", 0, "Disc. The disc index to rip. If not provided then disc 0 will be ripped.")
-
 	flag.BoolVar(&readConfig, "r", false, "Read. Reads and outputs the first encountered configuration file. The current working directory is searched first, then the user-level configuration.")
+	flag.StringVar(&discIds, "d", "0", "Disc. A comma delimited list of disc indices to rip. Example: -d 0,1,2")
 
 	flag.Parse()
 
@@ -72,18 +71,30 @@ func main() {
 	err := checkForPrerequisites()
 
 	if err != nil {
-		fmt.Printf("Prerequisite not found or inaccessible. Make sure makemkvcon and HandBrakeCLI are accessible via the PATH.\nExiting.\n")
+		fmt.Printf("Prerequisite not found or inaccessible. Make sure makemkvcon and HandBrakeCLI are accessible via the PATH.\n\nExiting.\n\n")
 		return
 	}
 
-	err = hmkv.Exec(discId)
+	discIdList := strings.Split(strings.ReplaceAll(discIds, " ", ""), ",")
+	discIdInts := make([]int, 0, len(discIdList))
+
+	for _, rawDiscId := range discIdList {
+		id, err := strconv.Atoi(rawDiscId)
+		if err != nil || id < 0 {
+			fmt.Printf("Invalid disc index value detected.\n\nExiting.\n\n")
+			return
+		}
+		discIdInts = append(discIdInts, id)
+	}
+
+	err = hmkv.Exec(discIdInts)
 
 	if err != nil {
 		if err == hmkv.ErrConfigNotFound {
 			fmt.Printf("Config file not found. Please run the configuration wizard with 'handymkv -c'.\n\n")
 			return
-		} else if err == hmkv.ErrTitlesDiscRead {
-			fmt.Printf("An error occurred while reading titles from disc %d. Please ensure the disc is inserted and try again.\n\n", discId)
+		} else if discErr, ok := err.(*hmkv.DiscError); ok {
+			fmt.Printf("An error occurred while reading titles from disc %d. Please ensure the disc is inserted and try again.\n\n", discErr.DiscId)
 			return
 		}
 

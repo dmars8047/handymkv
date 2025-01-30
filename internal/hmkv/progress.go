@@ -42,6 +42,8 @@ type titleStatus struct {
 	TitleIndex int
 	// The name of the title.
 	Title string
+	// The disc index.
+	DiscId int
 	// The status of the ripping process.
 	Ripping statusValue
 	// The status of the encoding process.
@@ -65,8 +67,8 @@ func (pt *progressTracker) applyChangeAndDisplay(titleIndex int, applyChangeFunc
 func (pt *progressTracker) refreshDisplay() {
 	clear()
 	PrintLogo()
-	fmt.Printf("%-30s%-20s%-20s\n", "Title", "Ripping", "Encoding")
-	fmt.Println(strings.Repeat("-", 70))
+	fmt.Printf("%-30s%-10s%-20s%-20s\n", "Title", "Disc ID", "Ripping", "Encoding")
+	fmt.Println(strings.Repeat("-", 80))
 
 	for _, status := range pt.statuses {
 		rippingColor := getColor(status.Ripping)
@@ -75,19 +77,20 @@ func (pt *progressTracker) refreshDisplay() {
 		// Format and pad each column
 		displayTitle := strings.TrimSuffix(status.Title, ".mkv")
 		titleCol, titleTooLong := padString(displayTitle, 30)
+		discIdCol, _ := padString(fmt.Sprintf("%d", status.DiscId), 10)
 		rippingCol, _ := padString(colorize(status.Ripping, rippingColor), 20)
 		encodingCol, _ := padString(colorize(status.Encoding, encodingColor), 20)
 
 		if titleTooLong {
 			titleSpillOver := titleCol[27:]
 			titleCol = fmt.Sprintf("%s   ", titleCol[0:27])
-			fmt.Printf("%s%s%s\n", titleCol, rippingCol, encodingCol)
+			fmt.Printf("%s%s%s%s\n", titleCol, discIdCol, rippingCol, encodingCol)
 			fmt.Printf("%s\n", titleSpillOver)
 			continue
 		}
 
 		// Print the row
-		fmt.Printf("%s%s%s\n", titleCol, rippingCol, encodingCol)
+		fmt.Printf("%s%s%s%s\n", titleCol, discIdCol, rippingCol, encodingCol)
 	}
 }
 

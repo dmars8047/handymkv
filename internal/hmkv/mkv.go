@@ -24,6 +24,7 @@ type TitleInfo struct {
 	// Index on disc
 	Index     int
 	DiscTitle string
+	DiscId    int
 	Chapters  int
 	Length    string
 	FileSize  string
@@ -120,6 +121,7 @@ func getTitlesFromDisc(discId int) ([]TitleInfo, error) {
 
 	// Convert the map to a slice
 	for _, title := range titleData {
+		title.DiscId = discId
 		titles = append(titles, *title)
 	}
 
@@ -135,11 +137,11 @@ func getTitles(discId int) ([]TitleInfo, error) {
 	titles, err := getTitlesFromDisc(discId)
 
 	if err != nil {
-		return titles, fmt.Errorf("an error occurred while reading titles from disc: %w", err)
+		return titles, fmt.Errorf("an error occurred while reading titles from disc - %w", err)
 	}
 
 	if len(titles) < 1 {
-		return titles, ErrTitlesDiscRead
+		return titles, NewDiscError(discId, "no titles found on disc")
 	}
 
 	return titles, nil

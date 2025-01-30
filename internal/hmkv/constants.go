@@ -2,6 +2,7 @@ package hmkv
 
 import (
 	"errors"
+	"fmt"
 )
 
 var defaultPossibleEncoderValues []string = []string{
@@ -24,4 +25,19 @@ var defaultPossibleEncoderValues []string = []string{
 }
 
 var ErrInvalidInput = errors.New("invalid input")
-var ErrTitlesDiscRead = errors.New("cannot read titles from disc")
+
+type DiscError struct {
+	DiscId int
+	Msg    string
+}
+
+func (e *DiscError) Error() string {
+	return fmt.Sprintf("disc %d: %s", e.DiscId, e.Msg)
+}
+
+func NewDiscError(discId int, msg string) error {
+	return &DiscError{
+		DiscId: discId,
+		Msg:    msg,
+	}
+}

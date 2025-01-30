@@ -15,7 +15,7 @@ import (
 // Executes the main functionality of the program.
 // Reads the configuration file, reads titles from the disc, prompts the user for which titles they want to rip,
 // and processes the selected titles.
-func Exec(discId int) error {
+func Exec(discIds []int) error {
 	config, err := ReadConfig()
 
 	if err != nil {
@@ -39,71 +39,79 @@ func Exec(discId int) error {
 		return fmt.Errorf("an error occurred while creating the handbrake output directory: %w", err)
 	}
 
-	fmt.Printf("Reading titles from disc...\n\n")
+	processTitles := make([]TitleInfo, 0)
 
-	titles, err := getTitles(discId)
+	for _, discId := range discIds {
 
-	if err != nil {
-		return err
-	}
+		fmt.Printf("Reading titles from disc...\n\n")
 
-	fmt.Printf("The following titles were read from the disc: %s\n\n", titles[0].DiscTitle)
+		titles, err := getTitles(discId)
 
-	for _, title := range titles {
-		fmt.Printf("ID: %d, Title Name: %s, Size: %s, Length: %s\n", title.Index, title.FileName, title.FileSize, title.Length)
-	}
+		if err != nil {
+			return err
+		}
 
-	var titleSelections string
+		fmt.Printf("The following titles were read from the disc: %s\n\n", titles[0].DiscTitle)
 
-	// Prompt the user for input
-	fmt.Print("\nEnter the IDs of the titles to process (0,1,2...) or enter 'all' to process all titles: \n\n")
-	fmt.Scanln(&titleSelections)
+		for _, title := range titles {
+			fmt.Printf("ID: %d, Title Name: %s, Size: %s, Length: %s\n", title.Index, title.FileName, title.FileSize, title.Length)
+		}
 
-	if titleSelections != "all" {
-		rawIds := strings.Split(titleSelections, ",")
-		selectedIds := make([]int, 0)
+		var titleSelections string
 
-		for _, rawIds := range rawIds {
-			id, err := strconv.Atoi(rawIds)
+		// Prompt the user for input
+		fmt.Print("\nEnter the IDs of the titles to process (0,1,2...) or enter 'all' to process all titles: \n\n")
+		fmt.Scanln(&titleSelections)
 
-			if err != nil {
-				fmt.Printf("Invalid title selection input detected.\n")
+		if titleSelections != "all" {
+			rawIds := strings.Split(titleSelections, ",")
+			selectedIds := make([]int, 0)
+
+			for _, rawIds := range rawIds {
+				id, err := strconv.Atoi(rawIds)
+
+				if err != nil {
+					fmt.Printf("Invalid title selection input detected.\n")
+					return nil
+				}
+
+				selectedIds = append(selectedIds, id)
+			}
+
+			if len(selectedIds) < 1 {
+				fmt.Printf("No selected titles detected.\n")
 				return nil
 			}
 
-			selectedIds = append(selectedIds, id)
-		}
-
-		if len(selectedIds) < 1 {
-			fmt.Printf("No selected titles detected.\n")
-			return nil
-		}
-
-		titles = slices.DeleteFunc(titles, func(x TitleInfo) bool {
-			for _, sd := range selectedIds {
-				if sd == x.Index {
-					return false
+			titles = slices.DeleteFunc(titles, func(x TitleInfo) bool {
+				for _, sd := range selectedIds {
+					if sd == x.Index {
+						return false
+					}
 				}
-			}
 
-			return true
-		})
+				return true
+			})
+		}
+
+		processTitles = append(processTitles, titles...)
 	}
 
-	if len(titles) < 1 {
+	if len(processTitles) < 1 {
 		fmt.Printf("No titles to process. Exiting.\n")
 		return nil
 	}
 
 	// Titles progress tracking
 	tracker := progressTracker{
-		statuses: make([]titleStatus, len(titles)),
+		statuses: make([]titleStatus, len(processTitles)),
 	}
 
-	for i, title := range titles {
+	for i, title := range processTitles {
 		tracker.statuses[i] = titleStatus{
 			TitleIndex: title.Index,
 			Title:      title.FileName,
+			DiscId:     title.DiscId,
 			Ripping:    Pending,
 			Encoding:   Pending,
 		}
@@ -131,7 +139,7 @@ func Exec(discId int) error {
 	fmt.Println()
 
 	ctx, cancelProcessing := context.WithCancel(context.Background())
-	var encChannel = make(chan EncodingParams, len(titles))
+	var encChannel = make(chan EncodingParams, len(processTitles))
 	var wg sync.WaitGroup
 
 	processStartTime := time.Now()
@@ -143,14 +151,14 @@ func Exec(discId int) error {
 		defer wg.Done()
 		defer close(encChannel)
 
-		for _, title := range titles {
+		for _, title := range processTitles {
 			applyInProgress := func(status *titleStatus) {
 				status.Ripping = InProgress
 			}
 
 			tracker.applyChangeAndDisplay(title.Index, applyInProgress)
 
-			ripErr := ripTitle(ctx, &title, config.MKVOutputDirectory, discId)
+			ripErr := ripTitle(ctx, &title, config.MKVOutputDirectory, title.DiscId)
 
 			if ripErr != nil {
 				tracker.setError(ripErr)
@@ -166,7 +174,12 @@ func Exec(discId int) error {
 			tracker.applyChangeAndDisplay(title.Index, applyComplete)
 
 			// Replace spaces with underscores for encoding run.
-			encodingOutputFileName := strings.ReplaceAll(title.FileName, " ", "_")
+			encodingOutputFileName := strings.ToLower(strings.ReplaceAll(title.FileName, " ", "_"))
+
+			// if there are multiple discs being processed, prepend the disc number to the filename
+			if len(discIds) > 1 {
+				encodingOutputFileName = fmt.Sprintf("disc_%d_%s", title.DiscId, encodingOutputFileName)
+			}
 
 			if config.EncodeConfig.OutputFileFormat != "" && config.EncodeConfig.OutputFileFormat != "mkv" {
 				encodingOutputFileName = fmt.Sprintf("%s.%s", strings.TrimSuffix(encodingOutputFileName, ".mkv"), config.EncodeConfig.OutputFileFormat)
@@ -237,7 +250,7 @@ func Exec(discId int) error {
 
 	fmt.Printf("\nOperation Complete. Time Elapsed: %s\n", formatTimeElapsedString(processDuration))
 
-	totalSizeRaw, totalSizeEncoded, err := calculateTotalFileSizes(titles, config)
+	totalSizeRaw, totalSizeEncoded, err := calculateTotalFileSizes(processTitles, config)
 
 	if err != nil {
 		fmt.Printf("An error occurred while calculating total sizes: %v\n", err)
