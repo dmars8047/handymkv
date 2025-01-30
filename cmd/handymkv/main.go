@@ -99,6 +99,13 @@ func main() {
 		}
 
 		fmt.Printf("\nAn error occurred during handymkv execution process.\n\nError - %v\n\n", err)
+
+		// If the error is an ExternalProcessError, print the process output
+		expErr, isExternalProcessErr := err.(*hmkv.ExternalProcessError)
+
+		if isExternalProcessErr && expErr.ProcessOuput != "" {
+			fmt.Print(expErr.ProcessOuput)
+		}
 	}
 }
 

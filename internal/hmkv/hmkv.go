@@ -219,11 +219,17 @@ func Exec(discIds []int) error {
 
 				tracker.applyChangeAndDisplay(params.TitleIndex, applyInProgress)
 
+				// Make sure the input file exists
+				if _, err := os.Stat(params.MKVOutputPath); os.IsNotExist(err) {
+					tracker.setError(fmt.Errorf("encoding input file %s does not exist", params.MKVOutputPath))
+					cancelProcessing()
+					return
+				}
+
 				encErr := encode(ctx, &params)
 
 				if encErr != nil {
-					// fmt.Printf("An error occurred while encoding %s\nError: %v\n", params.InputFilePath, encErr)
-					tracker.setError(fmt.Errorf("an error occurred while encoding %s: %w", params.MKVOutputPath, encErr))
+					tracker.setError(encErr)
 					cancelProcessing()
 					return
 				}

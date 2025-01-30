@@ -114,7 +114,7 @@ func ReadConfig() (*handyMKVConfig, error) {
 func readConfigFile(filePath string) (*handyMKVConfig, error) {
 	fileData, err := os.ReadFile(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("error reading config file: %w", err)
+		return nil, fmt.Errorf("error reading config file - %w", err)
 	}
 
 	var cfg handyMKVConfig
@@ -122,18 +122,18 @@ func readConfigFile(filePath string) (*handyMKVConfig, error) {
 	err = json.Unmarshal(fileData, &cfg)
 
 	if err != nil {
-		return nil, fmt.Errorf("error parsing config file: %w", err)
+		return nil, fmt.Errorf("error parsing config file - %w", err)
 	}
 
 	if cfg.EncodeConfig.PresetFile != "" {
 		presetFile, err := readPresetFile(cfg.EncodeConfig.PresetFile)
 
 		if err != nil {
-			return nil, fmt.Errorf("error reading HandBrake preset file: %w", err)
+			return nil, fmt.Errorf("error reading HandBrake preset file - %w", err)
 		}
 
 		if len(presetFile.PresetList) < 1 {
-			return nil, fmt.Errorf("no presets found in the HandBrake preset file: %s", cfg.EncodeConfig.PresetFile)
+			return nil, fmt.Errorf("no presets found in the HandBrake preset file - %s", cfg.EncodeConfig.PresetFile)
 		}
 
 		if len(presetFile.PresetList) > 0 {
@@ -252,7 +252,7 @@ func promptForConfig(configLocationSelection int) (*handyMKVConfig, error) {
 		encoderOptions, err := getPossibleEncoders()
 
 		if err != nil {
-			fmt.Printf("Could not parse encoders: %v. Falling back to documentation defaults.\n", err)
+			fmt.Printf("Could not parse encoders - %v. Falling back to documentation defaults.\n", err)
 			encoderOptions = defaultPossibleEncoderValues
 		}
 
@@ -322,7 +322,7 @@ func promptForConfig(configLocationSelection int) (*handyMKVConfig, error) {
 		presets, err := getPossiblePresets()
 
 		if err != nil {
-			fmt.Printf("Could not parse presets: %v. Falling back to documentation defaults.\n", err)
+			fmt.Printf("Could not parse presets - %v. Falling back to documentation defaults.\n", err)
 			return nil, err
 		}
 

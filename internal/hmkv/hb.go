@@ -75,9 +75,11 @@ func encode(ctx context.Context, params *EncodingParams) error {
 		args...,
 	)
 
-	// Run the command and wait for it to complete
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("handbrakecli failure: %w", err)
+	// Capture the combined output
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return NewExternalProcessError(fmt.Errorf("an error occurred while encoding %s - handbrakecli failure: %w", params.MKVOutputPath, err),
+			string(fmt.Sprintf("HandBrakeCLI Output\n----------------\n%s----------------\n\n", output)))
 	}
 
 	return nil
