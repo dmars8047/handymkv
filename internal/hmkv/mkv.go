@@ -68,7 +68,7 @@ func getTitlesFromDisc(discId int) ([]TitleInfo, error) {
 	cmdOut, err := exec.Command("makemkvcon", "-r", "info", fmt.Sprintf("disc:%d", discId)).Output()
 
 	if err != nil {
-		return titles, fmt.Errorf("error running command: %v", err)
+		return titles, fmt.Errorf("error running command: %w", err)
 	}
 
 	// Parse the output by splitting into lines
