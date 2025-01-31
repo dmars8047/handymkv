@@ -58,6 +58,10 @@ func (config *handyMKVConfig) String() string {
 			if config.EncodeConfig.Preset != "" {
 				sb.WriteString(fmt.Sprintf("Custom HandBrake Preset: %s\n", config.EncodeConfig.Preset))
 			}
+
+			if config.EncodeConfig.OutputFileFormat != "" {
+				sb.WriteString(fmt.Sprintf("Output File Format: %s\n", config.EncodeConfig.OutputFileFormat))
+			}
 		} else {
 			sb.WriteString(fmt.Sprintf("HandBrake Preset: %s\n", config.EncodeConfig.Preset))
 		}
@@ -138,6 +142,21 @@ func readConfigFile(filePath string) (*handyMKVConfig, error) {
 
 		if len(presetFile.PresetList) > 0 {
 			cfg.EncodeConfig.Preset = presetFile.PresetList[0].PresetName
+
+			var format string
+
+			switch presetFile.PresetList[0].FileFormat {
+			case "av_mp4":
+				format = "mp4"
+			case "av_mkv":
+				format = "mkv"
+			case "av_webm":
+				format = "webm"
+			default:
+				format = "mkv"
+			}
+
+			cfg.EncodeConfig.OutputFileFormat = format
 		}
 	}
 
