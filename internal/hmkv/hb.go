@@ -31,6 +31,7 @@ type HandBrakePresetFile struct {
 
 type HandBrakePreset struct {
 	PresetName string `json:"PresetName"`
+	FileFormat string `json:"FileFormat"`
 }
 
 func encode(ctx context.Context, params *EncodingParams) error {
