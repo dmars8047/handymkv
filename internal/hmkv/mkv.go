@@ -78,7 +78,19 @@ func getTitlesFromDisc(discId int) ([]TitleInfo, error) {
 	// Temporary variables to hold extracted data for each title
 	titleData := make(map[int]*TitleInfo)
 
+	var discTitle string
+
 	for _, line := range lines {
+		if strings.HasPrefix(line, fmt.Sprintf("DRV:%d", discId)) {
+			parts := strings.Split(line, ",")
+
+			if len(parts) != 7 || parts[5] == "\"\"" {
+				continue
+			}
+
+			discTitle = strings.Trim(parts[5], "\"")
+		}
+
 		// Extract the title index (e.g., TINFO:0, TINFO:1)
 		if strings.HasPrefix(line, "TINFO:") {
 			parts := strings.SplitN(line, ",", 4)
@@ -104,7 +116,11 @@ func getTitlesFromDisc(discId int) ([]TitleInfo, error) {
 			// Populate the relevant field based on the code
 			switch code {
 			case "2": // Disc Title
-				titleData[index].DiscTitle = value
+				if discTitle != "" {
+					titleData[index].DiscTitle = discTitle
+				} else {
+					titleData[index].DiscTitle = value
+				}
 			case "8": // Number of Chapters
 				if chapters, err := strconv.Atoi(value); err == nil {
 					titleData[index].Chapters = chapters
@@ -205,11 +221,11 @@ func ListDiscs() ([]DiscInfo, error) {
 				return nil, fmt.Errorf("error parsing disc index: %w", err)
 			}
 
-			driveName := strings.Trim(parts[5], "\"")
+			discName := strings.Trim(parts[5], "\"")
 
 			drives = append(drives, DiscInfo{
 				Index: discIndex,
-				Name:  driveName,
+				Name:  discName,
 			})
 		}
 	}

@@ -51,7 +51,7 @@ func Exec(discIds []int) error {
 			return err
 		}
 
-		fmt.Printf("The following titles were read from the disc: %s\n\n", titles[0].DiscTitle)
+		fmt.Printf("The following titles were read from the disc - %s\n\n", titles[0].DiscTitle)
 
 		for _, title := range titles {
 			fmt.Printf("ID: %d, Title Name: %s, Size: %s, Length: %s\n", title.Index, title.FileName, title.FileSize, title.Length)
@@ -132,12 +132,38 @@ func Exec(discIds []int) error {
 		return fmt.Errorf("an error occurred while creating the mkv output directory: %w", err)
 	}
 
+	// In multi-disc scenarios, create a subdirectory for each disc
+	if len(discIds) > 1 {
+		for _, discId := range discIds {
+			discDir := filepath.Join(config.MKVOutputDirectory, fmt.Sprintf("disc_%d", discId))
+
+			err = os.MkdirAll(discDir, 0740)
+
+			if err != nil {
+				return fmt.Errorf("an error occurred while creating the mkv output directory for disc %d: %w", discId, err)
+			}
+		}
+	}
+
 	config.HBOutputDirectory = filepath.Join(config.HBOutputDirectory, dirSlug)
 
 	err = os.MkdirAll(config.HBOutputDirectory, 0740)
 
 	if err != nil {
 		return fmt.Errorf("an error occurred while creating the handbrake output directory: %w", err)
+	}
+
+	// In multi-disc scenarios, create a subdirectory for each disc
+	if len(discIds) > 1 {
+		for _, discId := range discIds {
+			discDir := filepath.Join(config.HBOutputDirectory, fmt.Sprintf("disc_%d", discId))
+
+			err = os.MkdirAll(discDir, 0740)
+
+			if err != nil {
+				return fmt.Errorf("an error occurred while creating the handbrake output directory for disc %d: %w", discId, err)
+			}
+		}
 	}
 
 	fmt.Println()
@@ -162,7 +188,15 @@ func Exec(discIds []int) error {
 
 			tracker.applyChangeAndDisplay(title.Index, applyInProgress)
 
-			ripErr := ripTitle(ctx, &title, config.MKVOutputDirectory, title.DiscId)
+			var mkvOutputDirectory string
+
+			if len(discIds) > 1 {
+				mkvOutputDirectory = filepath.Join(config.MKVOutputDirectory, fmt.Sprintf("disc_%d", title.DiscId))
+			} else {
+				mkvOutputDirectory = config.MKVOutputDirectory
+			}
+
+			ripErr := ripTitle(ctx, &title, mkvOutputDirectory, title.DiscId)
 
 			if ripErr != nil {
 				tracker.setError(ripErr)
@@ -180,19 +214,22 @@ func Exec(discIds []int) error {
 			// Replace spaces with underscores for encoding run.
 			encodingOutputFileName := strings.ToLower(strings.ReplaceAll(title.FileName, " ", "_"))
 
-			// if there are multiple discs being processed, prepend the disc number to the filename
-			if len(discIds) > 1 {
-				encodingOutputFileName = fmt.Sprintf("disc_%d_%s", title.DiscId, encodingOutputFileName)
-			}
-
 			if config.EncodeConfig.OutputFileFormat != "" && config.EncodeConfig.OutputFileFormat != "mkv" {
 				encodingOutputFileName = fmt.Sprintf("%s.%s", strings.TrimSuffix(encodingOutputFileName, ".mkv"), config.EncodeConfig.OutputFileFormat)
 			}
 
+			var hbOutputDir string
+
+			if len(discIds) > 1 {
+				hbOutputDir = filepath.Join(config.HBOutputDirectory, fmt.Sprintf("disc_%d", title.DiscId))
+			} else {
+				hbOutputDir = config.HBOutputDirectory
+			}
+
 			encChannel <- EncodingParams{
 				TitleIndex:          title.Index,
-				MKVOutputPath:       filepath.Join(config.MKVOutputDirectory, title.FileName),
-				HandBrakeOutputPath: filepath.Join(config.HBOutputDirectory, encodingOutputFileName),
+				MKVOutputPath:       filepath.Join(mkvOutputDirectory, title.FileName),
+				HandBrakeOutputPath: filepath.Join(hbOutputDir, encodingOutputFileName),
 				Quality:             config.EncodeConfig.Quality,
 				Encoder:             config.EncodeConfig.Encoder,
 				EncoderPreset:       config.EncodeConfig.EncoderPreset,

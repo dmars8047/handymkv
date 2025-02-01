@@ -45,6 +45,10 @@ HandyMKV is designed to be flexible. The user can select which titles to rip fro
 
 ## Prerequisites
 
+### Supported Operating Systems
+
+HandyMKV is designed to work on Windows, MacOS, and Linux.
+
 ### MakeMKV
 
 MakeMKV is a tool that is used to rip the contents of a disc to a file on the local system. Note: this tool is not free and a license must be purchased for use.
@@ -72,10 +76,11 @@ Documentation for the HandBrakeCLI can be found [here](https://handbrake.fr/docs
 HandyMKV has a number of command line options that can be used to control its behavior. These options are described below.
 
 ```shell
-Usage of handymkv:
+Usage of handymkv.exe:
   -c    Configure. Runs the configuration wizard.
   -d string
-        Discs. A comma delimited list of disc indices to rip. Example: -d 0,1,2 (default "0")
+        Discs. A comma delimited list of disc indexes to rip. Example: -d 0,1,2 (default "0")
+  -l    List. Lists the available discs. The disc index is required to rip a disc. Drives without a valid disc inserted will not be listed.
   -r    Read. Reads and outputs the first encountered configuration file. The current working directory is searched first, then the user-level configuration.
   -v    Version. Prints the version of the application.
 ```
@@ -120,6 +125,16 @@ Once the process is complete, a summary will be displayed showing the space save
 All output files will be stored in the directory specified in the configuration file.
 
 Note: If there is a `config.json` file in the working directory at execution time, that file will be used instead of the user-wide configuration file.
+
+## Multi-Disc Support
+
+HandyMKV supports ripping and encoding multiple discs in a single run. This option is intended for when mutliple disc drives are available and connected to the host.
+
+During such multi-disc runs the output files will be sorted into subdirectories that indicate the disc they originated from.
+
+To rip and encode multiple discs, simply provide a comma delimited list of disc indexes to the `-d` flag. Example: `handymkv -d 0,1,2`.
+
+To see a list of available discs, use the `-l` flag. Example: `handymkv -l`.
 
 ## A Note on Concurrency
 
