@@ -74,8 +74,8 @@ HandyMKV has a number of command line options that can be used to control its be
 ```shell
 Usage of handymkv:
   -c    Configure. Runs the configuration wizard.
-  -d int
-        Disc. The disc index to rip. If not provided then disc 0 will be ripped.
+  -d string
+        Discs. A comma delimited list of disc indices to rip. Example: -d 0,1,2 (default "0")
   -r    Read. Reads and outputs the first encountered configuration file. The current working directory is searched first, then the user-level configuration.
   -v    Version. Prints the version of the application.
 ```

@@ -41,9 +41,9 @@ func Exec(discIds []int) error {
 
 	processTitles := make([]TitleInfo, 0)
 
-	for _, discId := range discIds {
+	for i, discId := range discIds {
 
-		fmt.Printf("Reading titles from disc...\n\n")
+		fmt.Printf("Reading titles from disc %d...\n\n", discId)
 
 		titles, err := getTitles(discId)
 
@@ -95,6 +95,10 @@ func Exec(discIds []int) error {
 		}
 
 		processTitles = append(processTitles, titles...)
+
+		if i < len(discIds)-1 {
+			fmt.Println()
+		}
 	}
 
 	if len(processTitles) < 1 {

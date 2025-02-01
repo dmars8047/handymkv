@@ -146,3 +146,73 @@ func getTitles(discId int) ([]TitleInfo, error) {
 
 	return titles, nil
 }
+
+// makemkvcon -r --cache=1 info disc:9999
+
+// Example Output of makemkvcon:
+
+// DRV:0,2,999,12,"BD-RE HL-DT-ST BD-RE  BH16NS40 1.05 KLZK7UI0426","STAR TREK TNG S4 D2","/dev/sr0"
+// DRV:1,256,999,0,"","",""
+// DRV:2,256,999,0,"","",""
+// DRV:3,256,999,0,"","",""
+// DRV:4,256,999,0,"","",""
+// DRV:5,256,999,0,"","",""
+// DRV:6,256,999,0,"","",""
+// DRV:7,256,999,0,"","",""
+// DRV:8,256,999,0,"","",""
+// DRV:9,256,999,0,"","",""
+// DRV:10,256,999,0,"","",""
+// DRV:11,256,999,0,"","",""
+// DRV:12,256,999,0,"","",""
+// DRV:13,256,999,0,"","",""
+// DRV:14,256,999,0,"","",""
+// DRV:15,256,999,0,"","",""
+
+type DiscInfo struct {
+	Index int
+	Name  string
+}
+
+func ListDiscs() ([]DiscInfo, error) {
+	cmdOut, err := exec.Command("makemkvcon", "-r", "--cache=1", "info", "disc:9999").Output()
+
+	if err != nil {
+		return nil, fmt.Errorf("error running command: %w", err)
+	}
+
+	// Parse the output by splitting into lines
+	lines := strings.Split(string(cmdOut), "\n")
+
+	// Temporary variables to hold extracted data for each title
+	drives := make([]DiscInfo, 0)
+
+	for _, line := range lines {
+		// Extract the title index (e.g., TINFO:0, TINFO:1)
+		if strings.HasPrefix(line, "DRV:") {
+			parts := strings.Split(line, ",")
+
+			if len(parts) != 7 || parts[5] == "\"\"" {
+				continue
+			}
+
+			discIndexString := parts[0]
+
+			discIndexString = strings.TrimPrefix(discIndexString, "DRV:")
+
+			discIndex, err := strconv.Atoi(discIndexString)
+
+			if err != nil {
+				return nil, fmt.Errorf("error parsing disc index: %w", err)
+			}
+
+			driveName := strings.Trim(parts[5], "\"")
+
+			drives = append(drives, DiscInfo{
+				Index: discIndex,
+				Name:  driveName,
+			})
+		}
+	}
+
+	return drives, nil
+}

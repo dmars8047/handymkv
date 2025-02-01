@@ -314,7 +314,7 @@ func promptForConfig(configLocationSelection int) (*handyMKVConfig, error) {
 			true)
 		clear()
 
-		config.EncodeConfig.OutputFileFormat = promptForSelection("What should the default output file format be?", []string{"mkv", "mp4"})
+		config.EncodeConfig.OutputFileFormat = promptForSelection("What should the default output file format be?", []string{"mkv", "mp4", "webm"})
 		clear()
 	} else if encoderSelection == 2 {
 		var presets []string

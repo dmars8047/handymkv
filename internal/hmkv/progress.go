@@ -67,7 +67,7 @@ func (pt *progressTracker) applyChangeAndDisplay(titleIndex int, applyChangeFunc
 func (pt *progressTracker) refreshDisplay() {
 	clear()
 	PrintLogo()
-	fmt.Printf("%-30s%-10s%-20s%-20s\n", "Title", "Disc ID", "Ripping", "Encoding")
+	fmt.Printf("%-30s%-10s%-20s%-20s\n", "Title", "Disc", "Ripping", "Encoding")
 	fmt.Println(strings.Repeat("-", 80))
 
 	for _, status := range pt.statuses {
