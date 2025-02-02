@@ -63,6 +63,18 @@ func Exec(discIds []int) error {
 		fmt.Print("\nEnter the IDs of the titles to process (0,1,2...) or enter 'all' to process all titles: \n\n")
 		fmt.Scanln(&titleSelections)
 
+		// Remove invalid characters
+		titleSelections = strings.ReplaceAll(titleSelections, " ", "")
+		titleSelections = strings.Trim(titleSelections, ",")
+		titleSelections = strings.ReplaceAll(titleSelections, "(", "")
+		titleSelections = strings.ReplaceAll(titleSelections, ")", "")
+
+		if titleSelections == "" {
+			fmt.Printf("No title selections detected. Exiting.\n\n")
+			return nil
+		}
+
+		// If the user entered 'all', don't filter the titles
 		if titleSelections != "all" {
 			rawIds := strings.Split(titleSelections, ",")
 			selectedIds := make([]int, 0)
@@ -71,7 +83,7 @@ func Exec(discIds []int) error {
 				id, err := strconv.Atoi(rawIds)
 
 				if err != nil {
-					fmt.Printf("Invalid title selection input detected.\n")
+					fmt.Printf("\nInvalid title selection input detected.\n\n")
 					return nil
 				}
 
@@ -79,7 +91,7 @@ func Exec(discIds []int) error {
 			}
 
 			if len(selectedIds) < 1 {
-				fmt.Printf("No selected titles detected.\n")
+				fmt.Printf("\nNo selected titles detected.\n\n")
 				return nil
 			}
 
@@ -102,7 +114,7 @@ func Exec(discIds []int) error {
 	}
 
 	if len(processTitles) < 1 {
-		fmt.Printf("No titles to process. Exiting.\n")
+		fmt.Printf("\nNo titles to process. Exiting.\n\n")
 		return nil
 	}
 
