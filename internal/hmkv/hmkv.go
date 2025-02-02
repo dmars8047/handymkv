@@ -118,6 +118,19 @@ func Exec(discIds []int) error {
 		return nil
 	}
 
+	// If there any discs with identical titles, set prependDiscToSub to true for those titles
+	var titleNames = make(map[string]int)
+
+	for _, title := range processTitles {
+		titleNames[strings.ToLower(title.FileName)]++
+	}
+
+	for _, title := range processTitles {
+		if titleNames[strings.ToLower(title.FileName)] > 1 {
+			title.SetPrependDiscToSubdirectory(true)
+		}
+	}
+
 	// Titles progress tracking
 	tracker := progressTracker{
 		statuses: make([]titleStatus, len(processTitles)),
@@ -144,38 +157,12 @@ func Exec(discIds []int) error {
 		return fmt.Errorf("an error occurred while creating the mkv output directory: %w", err)
 	}
 
-	// In multi-disc scenarios, create a subdirectory for each disc
-	if len(discIds) > 1 {
-		for _, discId := range discIds {
-			discDir := filepath.Join(config.MKVOutputDirectory, fmt.Sprintf("disc_%d", discId))
-
-			err = os.MkdirAll(discDir, 0740)
-
-			if err != nil {
-				return fmt.Errorf("an error occurred while creating the mkv output directory for disc %d: %w", discId, err)
-			}
-		}
-	}
-
 	config.HBOutputDirectory = filepath.Join(config.HBOutputDirectory, dirSlug)
 
 	err = os.MkdirAll(config.HBOutputDirectory, 0740)
 
 	if err != nil {
 		return fmt.Errorf("an error occurred while creating the handbrake output directory: %w", err)
-	}
-
-	// In multi-disc scenarios, create a subdirectory for each disc
-	if len(discIds) > 1 {
-		for _, discId := range discIds {
-			discDir := filepath.Join(config.HBOutputDirectory, fmt.Sprintf("disc_%d", discId))
-
-			err = os.MkdirAll(discDir, 0740)
-
-			if err != nil {
-				return fmt.Errorf("an error occurred while creating the handbrake output directory for disc %d: %w", discId, err)
-			}
-		}
 	}
 
 	fmt.Println()
@@ -209,11 +196,15 @@ func Exec(discIds []int) error {
 				continue
 			}
 
+			// Make sure the subdirectories exists
+			os.MkdirAll(filepath.Join(config.MKVOutputDirectory, discTitles[0].Subdirectory()), 0740)
+			os.MkdirAll(filepath.Join(config.HBOutputDirectory, discTitles[0].Subdirectory()), 0740)
+
 			rippingWaitGroup.Add(1)
 
 			go func() {
 				defer rippingWaitGroup.Done()
-				ripTitles(ctx, &tracker, discTitles, len(discIds) > 1, config, encChannel, cancelProcessing)
+				ripTitles(ctx, &tracker, discTitles, config, encChannel, cancelProcessing)
 			}()
 		}
 
@@ -273,17 +264,21 @@ func Exec(discIds []int) error {
 
 	processDuration := time.Since(processStartTime).Round(time.Second)
 
-	fmt.Printf("\nOperation Complete. Time Elapsed: %s\n", formatTimeElapsedString(processDuration))
+	fmt.Printf("\nOperation Complete. Time Elapsed - %s\n", formatTimeElapsedString(processDuration))
 
-	totalSizeRaw, totalSizeEncoded, err := calculateTotalFileSizes(processTitles, config, len(discIds) > 1)
+	totalSizeRaw, totalSizeEncoded, err := calculateTotalFileSizes(processTitles, config)
 
 	if err != nil {
-		fmt.Printf("An error occurred while calculating total sizes: %v\n", err)
+		fmt.Printf("An error occurred while calculating total sizes - %v\n", err)
 	}
 
-	fmt.Printf("\nTotal size of raw unencoded files: %s\n", formatSavedSpace(totalSizeRaw))
-	fmt.Printf("Total size of encoded files: %s\n", formatSavedSpace(totalSizeEncoded))
-	fmt.Printf("Total disk space saved via encoding: %s\n", formatSavedSpace(totalSizeRaw-totalSizeEncoded))
+	fmt.Printf("\nTotal size of raw unencoded files - %s\n", formatSavedSpace(totalSizeRaw))
+	fmt.Printf("Total size of encoded files - %s\n", formatSavedSpace(totalSizeEncoded))
+
+	savedSpace := totalSizeRaw - totalSizeEncoded
+	if savedSpace > 0 {
+		fmt.Printf("Total disk space saved via encoding - %s\n", formatSavedSpace(totalSizeRaw-totalSizeEncoded))
+	}
 
 	if config.DeleteRawMKVFiles {
 		deleteRawFiles(config)
@@ -299,7 +294,6 @@ func ripTitles(
 	ctx context.Context,
 	tracker *progressTracker,
 	processTitles []TitleInfo,
-	isMultiDiscOperation bool,
 	config *handyMKVConfig,
 	encChannel chan EncodingParams,
 	cancelProcessing context.CancelFunc) {
@@ -311,15 +305,9 @@ func ripTitles(
 
 		tracker.applyChangeAndDisplay(title.Index, applyInProgress)
 
-		var mkvOutputDirectory string
+		var mkvOutputDirectory string = filepath.Join(config.MKVOutputDirectory, title.Subdirectory())
 
-		if isMultiDiscOperation {
-			mkvOutputDirectory = filepath.Join(config.MKVOutputDirectory, fmt.Sprintf("disc_%d", title.DiscId))
-		} else {
-			mkvOutputDirectory = config.MKVOutputDirectory
-		}
-
-		ripErr := ripTitle(ctx, &title, mkvOutputDirectory, title.DiscId)
+		ripErr := ripTitle(ctx, &title, mkvOutputDirectory)
 
 		if ripErr != nil {
 			tracker.setError(ripErr)
@@ -341,13 +329,7 @@ func ripTitles(
 			encodingOutputFileName = fmt.Sprintf("%s.%s", strings.TrimSuffix(encodingOutputFileName, ".mkv"), config.EncodeConfig.OutputFileFormat)
 		}
 
-		var hbOutputDir string
-
-		if isMultiDiscOperation {
-			hbOutputDir = filepath.Join(config.HBOutputDirectory, fmt.Sprintf("disc_%d", title.DiscId))
-		} else {
-			hbOutputDir = config.HBOutputDirectory
-		}
+		var hbOutputDir string = filepath.Join(config.HBOutputDirectory, title.Subdirectory())
 
 		encChannel <- EncodingParams{
 			TitleIndex:          title.Index,

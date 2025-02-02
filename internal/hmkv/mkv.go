@@ -22,17 +22,30 @@ import (
 // 29 - Audio Long Code
 type TitleInfo struct {
 	// Index on disc
-	Index     int
-	DiscTitle string
-	DiscId    int
-	Chapters  int
-	Length    string
-	FileSize  string
-	FileName  string
+	Index            int
+	DiscTitle        string
+	DiscId           int
+	Chapters         int
+	Length           string
+	FileSize         string
+	FileName         string
+	prependDiscToSub bool
 }
 
-func ripTitle(ctx context.Context, title *TitleInfo, destDir string, discId int) error {
-	cmd := exec.CommandContext(ctx, "makemkvcon", "mkv", fmt.Sprintf("disc:%d", discId), fmt.Sprintf("%d", title.Index), destDir)
+func (t *TitleInfo) SetPrependDiscToSubdirectory(val bool) {
+	t.prependDiscToSub = val
+}
+
+func (t *TitleInfo) Subdirectory() string {
+	if t.prependDiscToSub {
+		return fmt.Sprintf("HMKV_DISC_%d__%s", t.DiscId, strings.ReplaceAll(t.DiscTitle, " ", "_"))
+	}
+
+	return strings.ReplaceAll(t.DiscTitle, " ", "_")
+}
+
+func ripTitle(ctx context.Context, title *TitleInfo, destDir string) error {
+	cmd := exec.CommandContext(ctx, "makemkvcon", "mkv", fmt.Sprintf("disc:%d", title.DiscId), fmt.Sprintf("%d", title.Index), destDir)
 
 	cmdOut, err := cmd.Output()
 	if err != nil {
@@ -47,7 +60,7 @@ func ripTitle(ctx context.Context, title *TitleInfo, destDir string, discId int)
 		f, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 
 		if err != nil {
-			return fmt.Errorf("ripping title from disc was not successful - an error occured while creating log file: %w", err)
+			return fmt.Errorf("ripping title from disc was not successful - an error occured while creating log file - %w", err)
 		}
 
 		defer f.Close()
@@ -81,7 +94,7 @@ func getTitlesFromDisc(discId int) ([]TitleInfo, error) {
 	var discTitle string
 
 	for _, line := range lines {
-		if strings.HasPrefix(line, fmt.Sprintf("DRV:%d", discId)) {
+		if discTitle == "" && strings.HasPrefix(line, fmt.Sprintf("DRV:%d,", discId)) {
 			parts := strings.Split(line, ",")
 
 			if len(parts) != 7 || parts[5] == "\"\"" {
@@ -115,12 +128,6 @@ func getTitlesFromDisc(discId int) ([]TitleInfo, error) {
 
 			// Populate the relevant field based on the code
 			switch code {
-			case "2": // Disc Title
-				if discTitle != "" {
-					titleData[index].DiscTitle = discTitle
-				} else {
-					titleData[index].DiscTitle = value
-				}
 			case "8": // Number of Chapters
 				if chapters, err := strconv.Atoi(value); err == nil {
 					titleData[index].Chapters = chapters
@@ -132,6 +139,9 @@ func getTitlesFromDisc(discId int) ([]TitleInfo, error) {
 			case "27": // File Name
 				titleData[index].FileName = value
 			}
+
+			titleData[index].prependDiscToSub = false
+			titleData[index].DiscTitle = discTitle
 		}
 	}
 

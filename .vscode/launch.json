@@ -14,7 +14,7 @@
             "mode": "auto",
             "program": "${workspaceFolder}/cmd/handymkv/main.go",
             "env": {},
-            "args": []
+            "args": ["-d", "0,1"]
         },
     ]
 }

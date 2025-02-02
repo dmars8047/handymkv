@@ -38,16 +38,11 @@ func deleteRawFiles(config *handyMKVConfig) {
 }
 
 // Calculates the total size of the raw and encoded files for all selected titles.
-func calculateTotalFileSizes(titles []TitleInfo, config *handyMKVConfig, isMultiDiscOperation bool) (int64, int64, error) {
+func calculateTotalFileSizes(titles []TitleInfo, config *handyMKVConfig) (int64, int64, error) {
 	var totalSizeRaw, totalSizeEncoded int64
 
 	for _, title := range titles {
-		rawFilePath := filepath.Join(config.MKVOutputDirectory, title.FileName)
-
-		// If it's a multi-disc operation, the raw file path will be different
-		if isMultiDiscOperation {
-			rawFilePath = filepath.Join(config.MKVOutputDirectory, fmt.Sprintf("disc_%d", title.DiscId), title.FileName)
-		}
+		rawFilePath := filepath.Join(config.MKVOutputDirectory, title.Subdirectory(), title.FileName)
 
 		rawFileSize, err := getFileSize(rawFilePath)
 
@@ -57,18 +52,7 @@ func calculateTotalFileSizes(titles []TitleInfo, config *handyMKVConfig, isMulti
 
 		totalSizeRaw += rawFileSize
 
-		encodedFilePath := filepath.Join(config.HBOutputDirectory, strings.ReplaceAll(title.FileName, " ", "_"))
-
-		// If it's a multi-disc operation, the encoded file path will be different
-		if isMultiDiscOperation {
-			encodingOutputFileName := strings.ReplaceAll(title.FileName, " ", "_")
-
-			if config.EncodeConfig.OutputFileFormat != "" && config.EncodeConfig.OutputFileFormat != "mkv" {
-				encodingOutputFileName = fmt.Sprintf("%s.%s", strings.TrimSuffix(encodingOutputFileName, ".mkv"), config.EncodeConfig.OutputFileFormat)
-			}
-
-			encodedFilePath = filepath.Join(config.HBOutputDirectory, fmt.Sprintf("disc_%d", title.DiscId), encodingOutputFileName)
-		}
+		encodedFilePath := filepath.Join(config.HBOutputDirectory, title.Subdirectory(), strings.ReplaceAll(title.FileName, " ", "_"))
 
 		encodedFileSize, err := getFileSize(encodedFilePath)
 
