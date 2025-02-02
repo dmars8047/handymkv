@@ -170,83 +170,49 @@ func Exec(discIds []int) error {
 
 	ctx, cancelProcessing := context.WithCancel(context.Background())
 	var encChannel = make(chan EncodingParams, len(processTitles))
-	var wg sync.WaitGroup
+	var processWaitGroup sync.WaitGroup
 
 	processStartTime := time.Now()
 
-	wg.Add(1)
-
 	// MKV
+	processWaitGroup.Add(1)
+
+	// For each disc rip the titles
 	go func() {
-		defer wg.Done()
 		defer close(encChannel)
+		defer processWaitGroup.Done()
 
-		for _, title := range processTitles {
-			applyInProgress := func(status *titleStatus) {
-				status.Ripping = InProgress
+		var rippingWaitGroup sync.WaitGroup
+
+		for _, discId := range discIds {
+			var discTitles []TitleInfo
+
+			for _, title := range processTitles {
+				if title.DiscId == discId {
+					discTitles = append(discTitles, title)
+				}
 			}
 
-			tracker.applyChangeAndDisplay(title.Index, applyInProgress)
-
-			var mkvOutputDirectory string
-
-			if len(discIds) > 1 {
-				mkvOutputDirectory = filepath.Join(config.MKVOutputDirectory, fmt.Sprintf("disc_%d", title.DiscId))
-			} else {
-				mkvOutputDirectory = config.MKVOutputDirectory
+			if len(discTitles) < 1 {
+				continue
 			}
 
-			ripErr := ripTitle(ctx, &title, mkvOutputDirectory, title.DiscId)
+			rippingWaitGroup.Add(1)
 
-			if ripErr != nil {
-				tracker.setError(ripErr)
-				cancelProcessing()
-				return
-			}
-
-			applyComplete := func(status *titleStatus) {
-				status.Ripping = Complete
-			}
-
-			// Update progress for ripping completion
-			tracker.applyChangeAndDisplay(title.Index, applyComplete)
-
-			// Replace spaces with underscores for encoding run.
-			encodingOutputFileName := strings.ToLower(strings.ReplaceAll(title.FileName, " ", "_"))
-
-			if config.EncodeConfig.OutputFileFormat != "" && config.EncodeConfig.OutputFileFormat != "mkv" {
-				encodingOutputFileName = fmt.Sprintf("%s.%s", strings.TrimSuffix(encodingOutputFileName, ".mkv"), config.EncodeConfig.OutputFileFormat)
-			}
-
-			var hbOutputDir string
-
-			if len(discIds) > 1 {
-				hbOutputDir = filepath.Join(config.HBOutputDirectory, fmt.Sprintf("disc_%d", title.DiscId))
-			} else {
-				hbOutputDir = config.HBOutputDirectory
-			}
-
-			encChannel <- EncodingParams{
-				TitleIndex:          title.Index,
-				MKVOutputPath:       filepath.Join(mkvOutputDirectory, title.FileName),
-				HandBrakeOutputPath: filepath.Join(hbOutputDir, encodingOutputFileName),
-				Quality:             config.EncodeConfig.Quality,
-				Encoder:             config.EncodeConfig.Encoder,
-				EncoderPreset:       config.EncodeConfig.EncoderPreset,
-				OutputFileFormat:    config.EncodeConfig.OutputFileFormat,
-				Preset:              config.EncodeConfig.Preset,
-				PresetFile:          config.EncodeConfig.PresetFile,
-				SubtitleLanguages:   config.EncodeConfig.SubtitleLanguages,
-				AudioLanguages:      config.EncodeConfig.AudioLanguages,
-			}
+			go func() {
+				defer rippingWaitGroup.Done()
+				ripTitles(ctx, &tracker, discTitles, len(discIds) > 1, config, encChannel, cancelProcessing)
+			}()
 		}
+
+		rippingWaitGroup.Wait()
 	}()
 
 	// HB
-	wg.Add(1)
+	processWaitGroup.Add(1)
 
 	go func() {
-		defer wg.Done()
+		defer processWaitGroup.Done()
 		for {
 			select {
 			case params, ok := <-encChannel:
@@ -287,7 +253,7 @@ func Exec(discIds []int) error {
 		}
 	}()
 
-	wg.Wait()
+	processWaitGroup.Wait()
 
 	if tracker.err != nil {
 		return tracker.err
@@ -297,7 +263,7 @@ func Exec(discIds []int) error {
 
 	fmt.Printf("\nOperation Complete. Time Elapsed: %s\n", formatTimeElapsedString(processDuration))
 
-	totalSizeRaw, totalSizeEncoded, err := calculateTotalFileSizes(processTitles, config)
+	totalSizeRaw, totalSizeEncoded, err := calculateTotalFileSizes(processTitles, config, len(discIds) > 1)
 
 	if err != nil {
 		fmt.Printf("An error occurred while calculating total sizes: %v\n", err)
@@ -315,6 +281,76 @@ func Exec(discIds []int) error {
 	fmt.Printf("\nEncoded files are located in: %s\n\n", config.HBOutputDirectory)
 
 	return nil
+}
+
+func ripTitles(
+	ctx context.Context,
+	tracker *progressTracker,
+	processTitles []TitleInfo,
+	isMultiDiscOperation bool,
+	config *handyMKVConfig,
+	encChannel chan EncodingParams,
+	cancelProcessing context.CancelFunc) {
+
+	for _, title := range processTitles {
+		applyInProgress := func(status *titleStatus) {
+			status.Ripping = InProgress
+		}
+
+		tracker.applyChangeAndDisplay(title.Index, applyInProgress)
+
+		var mkvOutputDirectory string
+
+		if isMultiDiscOperation {
+			mkvOutputDirectory = filepath.Join(config.MKVOutputDirectory, fmt.Sprintf("disc_%d", title.DiscId))
+		} else {
+			mkvOutputDirectory = config.MKVOutputDirectory
+		}
+
+		ripErr := ripTitle(ctx, &title, mkvOutputDirectory, title.DiscId)
+
+		if ripErr != nil {
+			tracker.setError(ripErr)
+			cancelProcessing()
+			return
+		}
+
+		applyComplete := func(status *titleStatus) {
+			status.Ripping = Complete
+		}
+
+		// Update progress for ripping completion
+		tracker.applyChangeAndDisplay(title.Index, applyComplete)
+
+		// Replace spaces with underscores for encoding run.
+		encodingOutputFileName := strings.ToLower(strings.ReplaceAll(title.FileName, " ", "_"))
+
+		if config.EncodeConfig.OutputFileFormat != "" && config.EncodeConfig.OutputFileFormat != "mkv" {
+			encodingOutputFileName = fmt.Sprintf("%s.%s", strings.TrimSuffix(encodingOutputFileName, ".mkv"), config.EncodeConfig.OutputFileFormat)
+		}
+
+		var hbOutputDir string
+
+		if isMultiDiscOperation {
+			hbOutputDir = filepath.Join(config.HBOutputDirectory, fmt.Sprintf("disc_%d", title.DiscId))
+		} else {
+			hbOutputDir = config.HBOutputDirectory
+		}
+
+		encChannel <- EncodingParams{
+			TitleIndex:          title.Index,
+			MKVOutputPath:       filepath.Join(mkvOutputDirectory, title.FileName),
+			HandBrakeOutputPath: filepath.Join(hbOutputDir, encodingOutputFileName),
+			Quality:             config.EncodeConfig.Quality,
+			Encoder:             config.EncodeConfig.Encoder,
+			EncoderPreset:       config.EncodeConfig.EncoderPreset,
+			OutputFileFormat:    config.EncodeConfig.OutputFileFormat,
+			Preset:              config.EncodeConfig.Preset,
+			PresetFile:          config.EncodeConfig.PresetFile,
+			SubtitleLanguages:   config.EncodeConfig.SubtitleLanguages,
+			AudioLanguages:      config.EncodeConfig.AudioLanguages,
+		}
+	}
 }
 
 // Prompts the user to create a configuration file.
