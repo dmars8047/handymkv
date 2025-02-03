@@ -118,15 +118,15 @@ func Exec(discIds []int) error {
 		return nil
 	}
 
-	// If there any discs with identical titles, set prependDiscToSub to true for those titles
-	var titleNames = make(map[string]int)
+	// If there any titles that have an identical disc title to another disc, set prependDiscToSub to true for those titles
+	var discNames = make(map[string]int)
 
 	for _, title := range processTitles {
-		titleNames[strings.ToLower(title.FileName)]++
+		discNames[strings.ToLower(title.DiscTitle)]++
 	}
 
 	for _, title := range processTitles {
-		if titleNames[strings.ToLower(title.FileName)] > 1 {
+		if discNames[strings.ToLower(title.DiscTitle)] > 1 {
 			title.SetPrependDiscToSubdirectory(true)
 		}
 	}
