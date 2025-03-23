@@ -32,6 +32,35 @@ type TitleInfo struct {
 	prependDiscToSub bool
 }
 
+func GetMakeMKVExecutable() (string, error) {
+	_, err := exec.LookPath("makemkvcon")
+
+	if err == nil {
+		return "makemkvcon", nil
+	}
+
+	// If OSX the executable is in /Applications/MakeMKV.app/Contents/MacOS
+	if runtime.GOOS == "darwin" {
+		const macExecutable = "/Applications/MakeMKV.app/Contents/MacOS/makemkvcon"
+
+		info, err := os.Stat(macExecutable)
+
+		// make sure that the file exists
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("makemkvcon executable not found at %s", macExecutable)
+		}
+
+		// make sure that the current user has permission to execute the file
+		if info.Mode()&0111 == 0 {
+			return "", fmt.Errorf("makemkvcon executable was found at %s is not executable", macExecutable)
+		}
+
+		return macExecutable, nil
+	}
+
+	return "", fmt.Errorf("makemkvcon executable not found")
+}
+
 func (t *TitleInfo) SetPrependDiscToSubdirectory(val bool) {
 	t.prependDiscToSub = val
 }
@@ -44,8 +73,18 @@ func (t *TitleInfo) Subdirectory() string {
 	return strings.ReplaceAll(t.DiscTitle, " ", "_")
 }
 
-func ripTitle(ctx context.Context, title *TitleInfo, destDir string) error {
-	cmd := exec.CommandContext(ctx, "makemkvcon", "mkv", fmt.Sprintf("disc:%d", title.DiscId), fmt.Sprintf("%d", title.Index), destDir)
+type MakeMKV struct {
+	executable string
+}
+
+func NewMakeMKV(executable string) *MakeMKV {
+	return &MakeMKV{
+		executable: executable,
+	}
+}
+
+func (mkv *MakeMKV) ripTitle(ctx context.Context, title *TitleInfo, destDir string) error {
+	cmd := exec.CommandContext(ctx, mkv.executable, "mkv", fmt.Sprintf("disc:%d", title.DiscId), fmt.Sprintf("%d", title.Index), destDir)
 
 	cmdOut, err := cmd.Output()
 	if err != nil {
@@ -75,11 +114,11 @@ func ripTitle(ctx context.Context, title *TitleInfo, destDir string) error {
 	return nil
 }
 
-func getTitlesFromDisc(discId int) ([]TitleInfo, error) {
+func (mkv *MakeMKV) getTitlesFromDisc(discId int) ([]TitleInfo, error) {
 	titles := make([]TitleInfo, 0)
 
 	// Run the command to get the output
-	cmdOut, err := exec.Command("makemkvcon", "-r", "info", fmt.Sprintf("disc:%d", discId)).Output()
+	cmdOut, err := exec.Command(mkv.executable, "-r", "info", fmt.Sprintf("disc:%d", discId)).Output()
 
 	if err != nil {
 		return titles, fmt.Errorf("error running command: %w", err)
@@ -159,8 +198,8 @@ func getTitlesFromDisc(discId int) ([]TitleInfo, error) {
 	return titles, nil
 }
 
-func getTitles(discId int) ([]TitleInfo, error) {
-	titles, err := getTitlesFromDisc(discId)
+func (mkv *MakeMKV) getTitles(discId int) ([]TitleInfo, error) {
+	titles, err := mkv.getTitlesFromDisc(discId)
 
 	if err != nil {
 		return titles, fmt.Errorf("an error occurred while reading titles from disc - %w", err)
@@ -199,8 +238,8 @@ type DiscInfo struct {
 	Name  string
 }
 
-func ListDiscs() ([]DiscInfo, error) {
-	cmdOut, err := exec.Command("makemkvcon", "-r", "--cache=1", "info", "disc:9999").Output()
+func (mkv *MakeMKV) ListDiscs() ([]DiscInfo, error) {
+	cmdOut, err := exec.Command(mkv.executable, "-r", "--cache=1", "info", "disc:9999").Output()
 
 	if err != nil {
 		return nil, fmt.Errorf("error running command: %w", err)

@@ -15,7 +15,7 @@ import (
 // Executes the main functionality of the program.
 // Reads the configuration file, reads titles from the disc, prompts the user for which titles they want to rip,
 // and processes the selected titles.
-func Exec(discIds []int) error {
+func Exec(mkv *MakeMKV, handBrakeCLIExecutable string, discIds []int) error {
 	config, err := ReadConfig()
 
 	if err != nil {
@@ -45,7 +45,7 @@ func Exec(discIds []int) error {
 
 		fmt.Printf("Reading titles from disc %d...\n\n", discId)
 
-		titles, err := getTitles(discId)
+		titles, err := mkv.getTitles(discId)
 
 		if err != nil {
 			return err
@@ -291,6 +291,7 @@ func Exec(discIds []int) error {
 }
 
 func ripTitles(
+	mkv *MakeMKV,
 	ctx context.Context,
 	tracker *progressTracker,
 	processTitles []TitleInfo,
@@ -307,7 +308,7 @@ func ripTitles(
 
 		var mkvOutputDirectory string = filepath.Join(config.MKVOutputDirectory, title.Subdirectory())
 
-		ripErr := ripTitle(ctx, &title, mkvOutputDirectory)
+		ripErr := mkv.ripTitle(ctx, &title, mkvOutputDirectory)
 
 		if ripErr != nil {
 			tracker.setError(ripErr)

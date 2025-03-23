@@ -9,6 +9,10 @@ import (
 	"strings"
 )
 
+func GetHandBrakeCLIExecutable() (string, error) {
+
+}
+
 type EncodingParams struct {
 	TitleIndex                  int      `json:"-"`
 	MKVOutputPath               string   `json:"-"`

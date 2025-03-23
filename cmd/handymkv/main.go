@@ -153,13 +153,8 @@ func main() {
 }
 
 // Checks for application prerequisites. Returns an error if a prerequisite is not found.
-func checkForPrerequisites() error {
-	_, err := exec.LookPath("makemkvcon")
-
-	if err != nil {
-		fmt.Printf("makemkvcon not found in $PATH. Please install the makemkvcon.\n")
-		return err
-	}
+func checkForPrerequisites() (*MakeMKV, error) {
+	mkv, err := hmkv.GetMakeMKVExecutable()
 
 	_, err = exec.LookPath("HandBrakeCLI")
 
@@ -168,5 +163,5 @@ func checkForPrerequisites() error {
 		return err
 	}
 
-	return nil
+	return mkv, nil
 }
