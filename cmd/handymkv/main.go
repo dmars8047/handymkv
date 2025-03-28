@@ -42,9 +42,10 @@ func main() {
 
 		if err != nil {
 			if err == ErrMakeMKVExecNotFound {
-				fmt.Print("This application relies on MakeMKV. Please download, install, and apply a license key to MakeMKV.\n\n")
-				fmt.Print("MakeMKV is available for download at https://makemkv.com/download/\n")
+				fmt.Print("MakeMKV executable not found.\n\n")
+				fmt.Print("Please download, install, and apply a valid license key to MakeMKV. MakeMKV is available for download at https://makemkv.com/download/. ")
 				fmt.Print("In most cases MakeMKV will be automatically detected. However, if you have installed it in a non-standard location, make sure the makemkvcon executable is accessible via the $PATH.\n")
+				fmt.Printf("\nPlease run the configuration wizard again after installing MakeMKV.\n\n")
 			}
 
 			if err == ErrHandBrakeCLIExecNotFound {
