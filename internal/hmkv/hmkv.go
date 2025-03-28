@@ -15,7 +15,7 @@ import (
 // Executes the main functionality of the program.
 // Reads the configuration file, reads titles from the disc, prompts the user for which titles they want to rip,
 // and processes the selected titles.
-func Exec(mkv *MakeMKV, handBrakeCLIExecutable string, discIds []int) error {
+func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int) error {
 	config, err := ReadConfig()
 
 	if err != nil {
@@ -204,7 +204,7 @@ func Exec(mkv *MakeMKV, handBrakeCLIExecutable string, discIds []int) error {
 
 			go func() {
 				defer rippingWaitGroup.Done()
-				ripTitles(ctx, &tracker, discTitles, config, encChannel, cancelProcessing)
+				ripTitles(mkv, ctx, &tracker, discTitles, config, encChannel, cancelProcessing)
 			}()
 		}
 
@@ -236,7 +236,7 @@ func Exec(mkv *MakeMKV, handBrakeCLIExecutable string, discIds []int) error {
 					return
 				}
 
-				encErr := encode(ctx, &params)
+				encErr := hb.encode(ctx, &params)
 
 				if encErr != nil {
 					tracker.setError(encErr)
@@ -349,7 +349,7 @@ func ripTitles(
 }
 
 // Prompts the user to create a configuration file.
-func Setup() error {
+func Setup(hb *HandBrakeCLI) error {
 	fmt.Printf("What level of configuration would you like to create?\n\n")
 	fmt.Println("1 - User-wide configuration (recommended).")
 	fmt.Println("2 - Current working directory.")
@@ -376,7 +376,7 @@ func Setup() error {
 	var config *handyMKVConfig
 
 	for {
-		config, err = promptForConfig(configLocationSelection)
+		config, err = promptForConfig(hb, configLocationSelection)
 
 		if err != nil {
 			fmt.Printf("An error occurred while prompting for configuration values: %v\n", err)

@@ -3,7 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"os/exec"
+	"os/user"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -11,7 +12,7 @@ import (
 	"github.com/dmars8047/handymkv/internal/hmkv"
 )
 
-const applicationVersion = "0.1.9"
+const applicationVersion = "0.1.10"
 
 func main() {
 	// Parse command line args
@@ -37,14 +38,39 @@ func main() {
 	}
 
 	if configure {
-		err := checkForPrerequisites()
+		_, hb, err := checkForPrerequisites()
 
 		if err != nil {
-			fmt.Printf("Prerequisite not found or inaccessible. Make sure makemkvcon and HandBrakeCLI are accessible via the PATH.\nExiting.\n")
+			if err == ErrMakeMKVExecNotFound {
+				fmt.Print("This application relies on MakeMKV. Please download, install, and apply a license key to MakeMKV.\n\n")
+				fmt.Print("MakeMKV is available for download at https://makemkv.com/download/\n")
+				fmt.Print("In most cases MakeMKV will be automatically detected. However, if you have installed it in a non-standard location, make sure the makemkvcon executable is accessible via the $PATH.\n")
+			}
+
+			if err == ErrHandBrakeCLIExecNotFound {
+				fmt.Printf("HandBrakeCLI executable not found.\n\n")
+				fmt.Print("The HandBrakeCLI executable is available for download at https://handbrake.fr/downloads2.php. ")
+				fmt.Print("The HandBrakeCLI downloaded executable must be accessible via the $PATH. ")
+
+				// Get the users home directory
+				usr, err := user.Current()
+
+				if err != nil {
+					fmt.Print("\nPlease run the configuration wizard again after installing HandBrakeCLI.\n\n")
+					return
+				}
+
+				path := filepath.Join(usr.HomeDir, "handymkv", "bin")
+
+				fmt.Printf("Alternatively, you can place the HandBrakeCLI executable in the following directory: %s. ", path)
+				fmt.Printf("You may need to create the directory if it does not exist.\n")
+				fmt.Printf("\nPlease run the configuration wizard again after installing HandBrakeCLI.\n\n")
+			}
+
 			return
 		}
 
-		err = hmkv.Setup()
+		err = hmkv.Setup(hb)
 
 		if err != nil {
 			fmt.Printf("An error occurred during the setup process.\nError: %v\n", err)
@@ -71,7 +97,7 @@ func main() {
 		return
 	}
 
-	err := checkForPrerequisites()
+	mkv, hb, err := checkForPrerequisites()
 
 	if err != nil {
 		fmt.Printf("Prerequisite not found or inaccessible. Make sure makemkvcon and HandBrakeCLI are accessible via the PATH.\n\nExiting.\n\n")
@@ -81,7 +107,7 @@ func main() {
 	if listDiscs {
 		fmt.Printf("Detecting available discs...\n\n")
 
-		discs, err := hmkv.ListDiscs()
+		discs, err := mkv.ListDiscs()
 
 		if err != nil {
 			fmt.Printf("An error occurred while listing the discs.\n\nError: %v\n", err)
@@ -130,7 +156,7 @@ func main() {
 
 	slices.Sort(discIdInts)
 
-	err = hmkv.Exec(discIdInts)
+	err = hmkv.Exec(mkv, hb, discIdInts)
 
 	if err != nil {
 		if err == hmkv.ErrConfigNotFound {
@@ -153,15 +179,21 @@ func main() {
 }
 
 // Checks for application prerequisites. Returns an error if a prerequisite is not found.
-func checkForPrerequisites() (*MakeMKV, error) {
+func checkForPrerequisites() (*hmkv.MakeMKV, *hmkv.HandBrakeCLI, error) {
 	mkv, err := hmkv.GetMakeMKVExecutable()
 
-	_, err = exec.LookPath("HandBrakeCLI")
-
 	if err != nil {
-		fmt.Printf("HandBrakeCLI not found in $PATH. Please install the HandBrakeCLI.\n")
-		return err
+		return nil, nil, ErrMakeMKVExecNotFound
 	}
 
-	return mkv, nil
+	hb, err := hmkv.GetHandBrakeCLIExecutable()
+
+	if err != nil {
+		return nil, nil, ErrHandBrakeCLIExecNotFound
+	}
+
+	return hmkv.NewMakeMKV(mkv), hmkv.NewHandBrakeCLI(hb), nil
 }
+
+var ErrHandBrakeCLIExecNotFound = fmt.Errorf("HandBrakeCLI executable not found")
+var ErrMakeMKVExecNotFound = fmt.Errorf("MakeMKV executable not found")

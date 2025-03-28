@@ -4,13 +4,50 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
+	"os/user"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
 
-func GetHandBrakeCLIExecutable() (string, error) {
+const handBrakeCLIExecutable = "HandBrakeCLI"
 
+func GetHandBrakeCLIExecutable() (string, error) {
+	_, err := exec.LookPath(handBrakeCLIExecutable)
+
+	if err == nil {
+		return handBrakeCLIExecutable, nil
+	}
+
+	// Check if the executable is in the homedir/.handymkv/bin
+	user, err := user.Current()
+
+	if err != nil {
+		return "", fmt.Errorf("could not get current user: %w", err)
+	}
+
+	path := filepath.Join(user.HomeDir, "handymkv", "bin", handBrakeCLIExecutable)
+
+	// check if the file exists using stat
+	_, err = os.Stat(path)
+
+	if err == nil {
+		return path, nil
+	}
+
+	return "", fmt.Errorf("handbrakecli executable not found")
+}
+
+type HandBrakeCLI struct {
+	executable string
+}
+
+func NewHandBrakeCLI(executable string) *HandBrakeCLI {
+	return &HandBrakeCLI{
+		executable: executable,
+	}
 }
 
 type EncodingParams struct {
@@ -38,7 +75,7 @@ type HandBrakePreset struct {
 	FileFormat string `json:"FileFormat"`
 }
 
-func encode(ctx context.Context, params *EncodingParams) error {
+func (hb *HandBrakeCLI) encode(ctx context.Context, params *EncodingParams) error {
 	var args []string = []string{
 		"--input", params.MKVOutputPath,
 		"--output", params.HandBrakeOutputPath,
@@ -76,7 +113,7 @@ func encode(ctx context.Context, params *EncodingParams) error {
 		}
 	}
 
-	cmd := exec.CommandContext(ctx, "HandBrakeCLI",
+	cmd := exec.CommandContext(ctx, hb.executable,
 		args...,
 	)
 
@@ -90,10 +127,10 @@ func encode(ctx context.Context, params *EncodingParams) error {
 	return nil
 }
 
-func getPossiblePresets() ([]string, error) {
+func (hb *HandBrakeCLI) getPossiblePresets() ([]string, error) {
 	var presets []string
 
-	cmd := exec.Command("HandBrakeCLI", "--preset-list")
+	cmd := exec.Command(hb.executable, "--preset-list")
 
 	output, err := cmd.CombinedOutput()
 
@@ -119,10 +156,10 @@ func getPossiblePresets() ([]string, error) {
 }
 
 // Calls HandBrakeCLI --help and parses the output to get a list of possible encoders
-func getPossibleEncoders() ([]string, error) {
+func (hb *HandBrakeCLI) getPossibleEncoders() ([]string, error) {
 	var encoders []string
 
-	cmd := exec.Command("HandBrakeCLI", "--help")
+	cmd := exec.Command(hb.executable, "--help")
 
 	output, err := cmd.Output()
 
@@ -157,10 +194,10 @@ func getPossibleEncoders() ([]string, error) {
 }
 
 // Calls HandBrakeCLI --encoder-preset-list and parses the output to get a list of possible quality presets for a given encoder
-func getPossibleEncoderPresets(encoder string) ([]string, error) {
+func (hb *HandBrakeCLI) getPossibleEncoderPresets(encoder string) ([]string, error) {
 	var qualityPresets []string
 
-	cmd := exec.Command("HandBrakeCLI", "--encoder-preset-list", encoder)
+	cmd := exec.Command(hb.executable, "--encoder-preset-list", encoder)
 
 	output, err := cmd.CombinedOutput()
 

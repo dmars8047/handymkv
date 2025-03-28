@@ -242,7 +242,7 @@ func createConfigFile(location configFileLocation, config *handyMKVConfig, overw
 }
 
 // Prompts the user for configuration values and returns a new HandyMKVConfig object.
-func promptForConfig(configLocationSelection int) (*handyMKVConfig, error) {
+func promptForConfig(hb *HandBrakeCLI, configLocationSelection int) (*handyMKVConfig, error) {
 	var config handyMKVConfig
 
 	clear()
@@ -268,7 +268,7 @@ func promptForConfig(configLocationSelection int) (*handyMKVConfig, error) {
 	clear()
 
 	if encoderSelection == 1 {
-		encoderOptions, err := getPossibleEncoders()
+		encoderOptions, err := hb.getPossibleEncoders()
 
 		if err != nil {
 			fmt.Printf("Could not parse encoders - %v. Falling back to documentation defaults.\n", err)
@@ -298,7 +298,7 @@ func promptForConfig(configLocationSelection int) (*handyMKVConfig, error) {
 		clear()
 
 		if qualitySelection == 1 {
-			encoderPresets, err := getPossibleEncoderPresets(config.EncodeConfig.Encoder)
+			encoderPresets, err := hb.getPossibleEncoderPresets(config.EncodeConfig.Encoder)
 
 			if err != nil {
 				return nil, err
@@ -338,7 +338,7 @@ func promptForConfig(configLocationSelection int) (*handyMKVConfig, error) {
 	} else if encoderSelection == 2 {
 		var presets []string
 
-		presets, err := getPossiblePresets()
+		presets, err := hb.getPossiblePresets()
 
 		if err != nil {
 			fmt.Printf("Could not parse presets - %v. Falling back to documentation defaults.\n", err)
