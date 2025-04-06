@@ -41,33 +41,9 @@ func main() {
 		_, hb, err := checkForPrerequisites()
 
 		if err != nil {
-			if err == ErrMakeMKVExecNotFound {
-				fmt.Print("MakeMKV executable not found.\n\n")
-				fmt.Print("Please download, install, and apply a valid license key to MakeMKV. MakeMKV is available for download at https://makemkv.com/download/. ")
-				fmt.Print("In most cases MakeMKV will be automatically detected. However, if you have installed it in a non-standard location, make sure the makemkvcon executable is accessible via the $PATH.\n")
-				fmt.Printf("\nPlease run the configuration wizard again after installing MakeMKV.\n\n")
-			}
-
-			if err == ErrHandBrakeCLIExecNotFound {
-				fmt.Printf("HandBrakeCLI executable not found.\n\n")
-				fmt.Print("The HandBrakeCLI executable is available for download at https://handbrake.fr/downloads2.php. ")
-				fmt.Print("The HandBrakeCLI downloaded executable must be accessible via the $PATH. ")
-
-				// Get the users home directory
-				usr, err := user.Current()
-
-				if err != nil {
-					fmt.Print("\nPlease run the configuration wizard again after installing HandBrakeCLI.\n\n")
-					return
-				}
-
-				path := filepath.Join(usr.HomeDir, "handymkv", "bin")
-
-				fmt.Printf("Alternatively, you can place the HandBrakeCLI executable in the following directory: %s. ", path)
-				fmt.Printf("You may need to create the directory if it does not exist.\n")
-				fmt.Printf("\nPlease run the configuration wizard again after installing HandBrakeCLI.\n\n")
-			}
-
+			outputFailedPrerequisiteCheck(err)
+			fmt.Print("Please run the configuration wizard again after addressing prerequisite dependency issues.\n\n")
+			fmt.Printf("Exiting.\n\n")
 			return
 		}
 
@@ -101,7 +77,8 @@ func main() {
 	mkv, hb, err := checkForPrerequisites()
 
 	if err != nil {
-		fmt.Printf("Prerequisite not found or inaccessible. Make sure makemkvcon and HandBrakeCLI are accessible via the PATH.\n\nExiting.\n\n")
+		outputFailedPrerequisiteCheck(err)
+		fmt.Print("Exiting.\n\n")
 		return
 	}
 
@@ -175,6 +152,35 @@ func main() {
 
 		if isExternalProcessErr && expErr.ProcessOuput != "" {
 			fmt.Print(expErr.ProcessOuput)
+		}
+	}
+}
+
+func outputFailedPrerequisiteCheck(err error) {
+	if err != nil {
+		if err == ErrMakeMKVExecNotFound {
+			fmt.Print("MakeMKV executable not found.\n\n")
+			fmt.Print("Please download, install, and apply a valid license key to MakeMKV. MakeMKV is available for download at https://makemkv.com/download/. ")
+			fmt.Print("In most cases MakeMKV will be automatically detected. However, if you have installed it in a non-standard location, make sure the makemkvcon executable is accessible via the $PATH.\n")
+			fmt.Print("\nPlease run the configuration wizard again after installing MakeMKV.\n\n")
+		} else if err == ErrHandBrakeCLIExecNotFound {
+			fmt.Print("HandBrakeCLI executable not found.\n\n")
+			fmt.Print("The HandBrakeCLI executable is available for download at https://handbrake.fr/downloads2.php. ")
+			fmt.Print("The HandBrakeCLI downloaded executable must be accessible via the $PATH. ")
+
+			// Get the users home directory
+			usr, err := user.Current()
+
+			if err != nil {
+				return
+			}
+
+			path := filepath.Join(usr.HomeDir, "handymkv", "bin")
+
+			fmt.Printf("Alternatively, you can place the HandBrakeCLI executable in the following directory: %s. ", path)
+			fmt.Print("You may need to create the directory if it does not already exist.\n\n")
+		} else {
+			fmt.Print("An unknown error occurred while checking for prerequisite dependencies.\n\n")
 		}
 	}
 }

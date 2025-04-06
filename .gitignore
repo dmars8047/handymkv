@@ -26,6 +26,8 @@ go.work.sum
 
 /bin
 /example_data
+/hboutput
+/mkvoutput
 
 todo.txt
 
