@@ -33,10 +33,16 @@ type TitleInfo struct {
 }
 
 func GetMakeMKVExecutable() (string, error) {
-	_, err := exec.LookPath("makemkvcon")
+	makeMKVExecutableName := "makemkvcon"
+
+	if runtime.GOOS == "windows" {
+		makeMKVExecutableName = fmt.Sprintf("%s%s", makeMKVExecutableName, ".exe")
+	}
+
+	_, err := exec.LookPath(makeMKVExecutableName)
 
 	if err == nil {
-		return "makemkvcon", nil
+		return makeMKVExecutableName, nil
 	}
 
 	// If OSX the executable is in /Applications/MakeMKV.app/Contents/MacOS
@@ -61,16 +67,11 @@ func GetMakeMKVExecutable() (string, error) {
 	if runtime.GOOS == "windows" {
 		const winExecutable = "C:\\Program Files (x86)\\MakeMKV\\makemkvcon.exe"
 
-		info, err := os.Stat(winExecutable)
+		_, err := os.Stat(winExecutable)
 
 		// make sure that the file exists
-		if os.IsNotExist(err) {
+		if os.IsNotExist(err) || err != nil {
 			return "", fmt.Errorf("makemkvcon executable not found at %s", winExecutable)
-		}
-
-		// make sure that the current user has permission to execute the file
-		if info.Mode()&0111 == 0 {
-			return "", fmt.Errorf("makemkvcon executable was found at %s is not executable", winExecutable)
 		}
 
 		return winExecutable, nil

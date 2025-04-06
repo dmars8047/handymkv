@@ -8,17 +8,23 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 )
 
-const handBrakeCLIExecutable = "HandBrakeCLI"
-
 func GetHandBrakeCLIExecutable() (string, error) {
-	_, err := exec.LookPath(handBrakeCLIExecutable)
+
+	handBrakeCLIExecutableName := "HandBrakeCLI"
+
+	if runtime.GOOS == "windows" {
+		handBrakeCLIExecutableName = fmt.Sprintf("%s%s", handBrakeCLIExecutableName, ".exe")
+	}
+
+	_, err := exec.LookPath(handBrakeCLIExecutableName)
 
 	if err == nil {
-		return handBrakeCLIExecutable, nil
+		return handBrakeCLIExecutableName, nil
 	}
 
 	// Check if the executable is in the homedir/.handymkv/bin
@@ -28,7 +34,7 @@ func GetHandBrakeCLIExecutable() (string, error) {
 		return "", fmt.Errorf("could not get current user: %w", err)
 	}
 
-	path := filepath.Join(user.HomeDir, "handymkv", "bin", handBrakeCLIExecutable)
+	path := filepath.Join(user.HomeDir, "handymkv", "bin", handBrakeCLIExecutableName)
 
 	// check if the file exists using stat
 	_, err = os.Stat(path)
