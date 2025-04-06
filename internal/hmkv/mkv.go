@@ -58,6 +58,24 @@ func GetMakeMKVExecutable() (string, error) {
 		return macExecutable, nil
 	}
 
+	if runtime.GOOS == "windows" {
+		const winExecutable = "C:\\Program Files (x86)\\MakeMKV\\makemkvcon.exe"
+
+		info, err := os.Stat(winExecutable)
+
+		// make sure that the file exists
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("makemkvcon executable not found at %s", winExecutable)
+		}
+
+		// make sure that the current user has permission to execute the file
+		if info.Mode()&0111 == 0 {
+			return "", fmt.Errorf("makemkvcon executable was found at %s is not executable", winExecutable)
+		}
+
+		return winExecutable, nil
+	}
+
 	return "", fmt.Errorf("makemkvcon executable not found")
 }
 
