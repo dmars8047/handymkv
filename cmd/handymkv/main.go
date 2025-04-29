@@ -12,7 +12,7 @@ import (
 	"github.com/dmars8047/handymkv/internal/hmkv"
 )
 
-const applicationVersion = "0.1.10"
+const applicationVersion = "0.1.12"
 
 func main() {
 	// Parse command line args
