@@ -96,13 +96,7 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int) error {
 			}
 
 			titles = slices.DeleteFunc(titles, func(x TitleInfo) bool {
-				for _, sd := range selectedIds {
-					if sd == x.Index {
-						return false
-					}
-				}
-
-				return true
+				return !slices.Contains(selectedIds, x.Index)
 			})
 		}
 
@@ -300,11 +294,9 @@ func ripTitles(
 	cancelProcessing context.CancelFunc) {
 
 	for _, title := range processTitles {
-		applyInProgress := func(status *titleStatus) {
+		tracker.applyChangeAndDisplay(title.Index, func(status *titleStatus) {
 			status.Ripping = InProgress
-		}
-
-		tracker.applyChangeAndDisplay(title.Index, applyInProgress)
+		})
 
 		var mkvOutputDirectory string = filepath.Join(config.MKVOutputDirectory, title.Subdirectory())
 

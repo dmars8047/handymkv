@@ -105,26 +105,34 @@ func NewMakeMKV(executable string) *MakeMKV {
 func (mkv *MakeMKV) ripTitle(ctx context.Context, title *TitleInfo, destDir string) error {
 	cmd := exec.CommandContext(ctx, mkv.executable, "mkv", fmt.Sprintf("disc:%d", title.DiscId), fmt.Sprintf("%d", title.Index), destDir)
 
-	cmdOut, err := cmd.Output()
+	cmdOut, err := cmd.CombinedOutput()
+
 	if err != nil {
-		return err
-	}
-
-	success := strings.Contains(string(cmdOut), "Copy complete. 1 titles saved.")
-
-	if !success {
 		// write cmdOut to a log file in the dest dir
 		logFilePath := filepath.Join(destDir, "rip_err.log")
-		f, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		f, openLogFileErr := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 
-		if err != nil {
-			return fmt.Errorf("ripping title from disc was not successful - an error occured while creating log file - %w", err)
+		if openLogFileErr != nil {
+			return fmt.Errorf("ripping title from disc was not successful - %w - an error occured while creating log file - %w", err, openLogFileErr)
 		}
 
 		defer f.Close()
 
-		if _, err := f.WriteString(string(cmdOut)); err != nil {
-			return fmt.Errorf("failed to write to log file: %w", err)
+		// determine OS-specific newline
+		var newline string = "\n"
+		if runtime.GOOS == "windows" {
+			newline = "\r\n"
+		}
+
+		// write combined output and error to log in one call
+		logContent := fmt.Sprintf("MakeMKV Output%s%s#####%s%s#####%s%sError: %v",
+			newline, newline, newline,
+			string(cmdOut),
+			newline, newline,
+			err)
+
+		if _, writeLogFileErr := f.WriteString(logContent); writeLogFileErr != nil {
+			return fmt.Errorf("ripping title from disc was not successful - %w - failed to write to log file: %w", err, writeLogFileErr)
 		}
 
 		return fmt.Errorf("ripping title from disc was not successful - mkv error details can be found in log file %s", logFilePath)
