@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 // Reads the size of the specified file and returns it in bytes.
@@ -52,8 +51,8 @@ func calculateTotalFileSizes(titles []TitleInfo, config *handyMKVConfig) (int64,
 
 		totalSizeRaw += rawFileSize
 
-		encodedFileName := fmt.Sprintf("%s.%s", strings.TrimSuffix(title.FileName, ".mkv"), config.EncodeConfig.OutputFileFormat)
-		encodedFilePath := filepath.Join(config.HBOutputDirectory, title.Subdirectory(), strings.ReplaceAll(encodedFileName, " ", "_"))
+		encodedFileName := title.GetEncodingFileName(config)
+		encodedFilePath := filepath.Join(config.HBOutputDirectory, title.Subdirectory(), encodedFileName)
 
 		encodedFileSize, err := getFileSize(encodedFilePath)
 

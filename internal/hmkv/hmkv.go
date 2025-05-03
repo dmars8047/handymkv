@@ -316,11 +316,7 @@ func ripTitles(
 		tracker.applyChangeAndDisplay(title.Index, applyComplete)
 
 		// Replace spaces with underscores for encoding run.
-		encodingOutputFileName := strings.ReplaceAll(title.FileName, " ", "_")
-
-		if config.EncodeConfig.OutputFileFormat != "" && config.EncodeConfig.OutputFileFormat != "mkv" {
-			encodingOutputFileName = fmt.Sprintf("%s.%s", strings.TrimSuffix(encodingOutputFileName, ".mkv"), config.EncodeConfig.OutputFileFormat)
-		}
+		encodingOutputFileName := title.GetEncodingFileName(config)
 
 		var hbOutputDir string = filepath.Join(config.HBOutputDirectory, title.Subdirectory())
 
