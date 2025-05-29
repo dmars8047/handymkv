@@ -117,7 +117,6 @@ func (mkv *MakeMKV) ripTitle(ctx context.Context, title *TitleInfo, destDir stri
 	cmd := exec.CommandContext(ctx, mkv.executable, "mkv", fmt.Sprintf("disc:%d", title.DiscId), fmt.Sprintf("%d", title.Index), destDir)
 
 	cmdOut, err := cmd.CombinedOutput()
-
 	if err != nil {
 		// write cmdOut to a log file in the dest dir
 		logFilePath := filepath.Join(destDir, "rip_err.log")
@@ -130,7 +129,7 @@ func (mkv *MakeMKV) ripTitle(ctx context.Context, title *TitleInfo, destDir stri
 		defer f.Close()
 
 		// determine OS-specific newline
-		var newline string = "\n"
+		newline := "\n"
 		if runtime.GOOS == "windows" {
 			newline = "\r\n"
 		}
@@ -157,7 +156,6 @@ func (mkv *MakeMKV) getTitlesFromDisc(discId int) ([]TitleInfo, error) {
 
 	// Run the command to get the output
 	cmdOut, err := exec.Command(mkv.executable, "-r", "info", fmt.Sprintf("disc:%d", discId)).Output()
-
 	if err != nil {
 		return titles, fmt.Errorf("error running command: %w", err)
 	}
@@ -238,7 +236,6 @@ func (mkv *MakeMKV) getTitlesFromDisc(discId int) ([]TitleInfo, error) {
 
 func (mkv *MakeMKV) getTitles(discId int) ([]TitleInfo, error) {
 	titles, err := mkv.getTitlesFromDisc(discId)
-
 	if err != nil {
 		return titles, fmt.Errorf("an error occurred while reading titles from disc - %w", err)
 	}
@@ -278,7 +275,6 @@ type DiscInfo struct {
 
 func (mkv *MakeMKV) ListDiscs() ([]DiscInfo, error) {
 	cmdOut, err := exec.Command(mkv.executable, "-r", "--cache=1", "info", "disc:9999").Output()
-
 	if err != nil {
 		return nil, fmt.Errorf("error running command: %w", err)
 	}
@@ -303,7 +299,6 @@ func (mkv *MakeMKV) ListDiscs() ([]DiscInfo, error) {
 			discIndexString = strings.TrimPrefix(discIndexString, "DRV:")
 
 			discIndex, err := strconv.Atoi(discIndexString)
-
 			if err != nil {
 				return nil, fmt.Errorf("error parsing disc index: %w", err)
 			}
