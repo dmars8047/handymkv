@@ -58,6 +58,7 @@ func NewHandBrakeCLI(executable string) *HandBrakeCLI {
 
 type EncodingParams struct {
 	TitleIndex                  int      `json:"-"`
+	DiscId                      int      `json:"-"`
 	MKVOutputPath               string   `json:"-"`
 	HandBrakeOutputPath         string   `json:"-"`
 	Encoder                     string   `json:"encoder,omitempty"`
