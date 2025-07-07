@@ -50,12 +50,12 @@ type titleStatus struct {
 	Encoding statusValue
 }
 
-func (pt *progressTracker) applyChangeAndDisplay(titleIndex int, applyChangeFunc func(*titleStatus)) {
+func (pt *progressTracker) applyChangeAndDisplay(titleIndex int, discId int, applyChangeFunc func(*titleStatus)) {
 	pt.mutex.Lock()
 	defer pt.mutex.Unlock()
 
 	for i, status := range pt.statuses {
-		if status.TitleIndex == titleIndex {
+		if status.TitleIndex == titleIndex && status.DiscId == discId {
 			applyChangeFunc(&pt.statuses[i])
 			break
 		}

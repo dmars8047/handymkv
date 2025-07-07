@@ -221,7 +221,7 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int) error {
 					status.Encoding = InProgress
 				}
 
-				tracker.applyChangeAndDisplay(params.TitleIndex, applyInProgress)
+				tracker.applyChangeAndDisplay(params.TitleIndex, params.DiscId, applyInProgress)
 
 				// Make sure the input file exists
 				if _, err := os.Stat(params.MKVOutputPath); os.IsNotExist(err) {
@@ -243,7 +243,7 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int) error {
 				}
 
 				// Update progress for encoding completion
-				tracker.applyChangeAndDisplay(params.TitleIndex, applyComplete)
+				tracker.applyChangeAndDisplay(params.TitleIndex, params.DiscId, applyComplete)
 			case <-ctx.Done():
 				return
 			}
@@ -294,7 +294,7 @@ func ripTitles(
 	cancelProcessing context.CancelFunc) {
 
 	for _, title := range processTitles {
-		tracker.applyChangeAndDisplay(title.Index, func(status *titleStatus) {
+		tracker.applyChangeAndDisplay(title.Index, title.DiscId, func(status *titleStatus) {
 			status.Ripping = InProgress
 		})
 
@@ -313,7 +313,7 @@ func ripTitles(
 		}
 
 		// Update progress for ripping completion
-		tracker.applyChangeAndDisplay(title.Index, applyComplete)
+		tracker.applyChangeAndDisplay(title.Index, title.DiscId, applyComplete)
 
 		// Replace spaces with underscores for encoding run.
 		encodingOutputFileName := title.GetEncodingFileName(config)
@@ -322,6 +322,7 @@ func ripTitles(
 
 		encChannel <- EncodingParams{
 			TitleIndex:          title.Index,
+			DiscId:              title.DiscId,
 			MKVOutputPath:       filepath.Join(mkvOutputDirectory, title.FileName),
 			HandBrakeOutputPath: filepath.Join(hbOutputDir, encodingOutputFileName),
 			Quality:             config.EncodeConfig.Quality,
