@@ -87,6 +87,8 @@ Usage of handymkv.exe:
 
 ## Installation
 
+### Installing from GitHub
+
 HandyMKV is a Go application and can be installed using the following command:
 
 ```shell
@@ -94,6 +96,67 @@ go install github.com/dmars8047/handymkv/cmd/handymkv@latest
 ```
 
 This requires Go to be installed on the system. Go can be installed from [here](https://go.dev/doc/install).
+
+### Building from Source
+
+If you have cloned the repository, you can build HandyMKV using the provided Makefile or Go commands directly.
+
+#### Using Make (Recommended)
+
+The Makefile provides convenient targets for building HandyMKV for various platforms:
+
+**Build for your current system:**
+```shell
+make current
+```
+This will create a binary in `bin/handymkv` (or `bin/handymkv.exe` on Windows).
+
+**Install to your GOPATH/bin:**
+```shell
+make install
+```
+This installs the binary to your Go bin directory, making it available system-wide.
+
+**Cross-compile for all supported platforms:**
+```shell
+make all
+```
+This builds binaries for Linux, macOS, and Windows (both AMD64 and ARM64 architectures) in separate subdirectories under `bin/`.
+
+**Cross-compile for a specific platform:**
+```shell
+make linux-amd64      # Linux AMD64
+make linux-arm64      # Linux ARM64
+make darwin-amd64     # macOS Intel
+make darwin-arm64     # macOS Apple Silicon
+make windows-amd64    # Windows AMD64
+make windows-arm64    # Windows ARM64
+```
+
+**Clean build artifacts:**
+```shell
+make clean
+```
+
+**View all available targets:**
+```shell
+make help
+```
+
+#### Using Go Commands Directly
+
+Alternatively, you can build using Go commands:
+
+```shell
+# Build for current system
+go build -o bin/handymkv ./cmd/handymkv
+
+# Install to GOPATH/bin
+go install ./cmd/handymkv
+
+# Cross-compile (example for Linux AMD64)
+GOOS=linux GOARCH=amd64 go build -o bin/linux-amd64/handymkv ./cmd/handymkv
+```
 
 Prebuilt binaries may be provided in the future.
 
