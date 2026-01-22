@@ -231,7 +231,7 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int) error {
 				}
 
 				// Start animation poller for encoding
-				stopAnimPoller := tracker.startAnimationPoller(ctx, params.TitleIndex, params.DiscId)
+				stopAnimPoller := tracker.startAnimationPoller(ctx)
 
 				encErr := hb.encode(ctx, &params)
 

@@ -11,9 +11,10 @@ import (
 // Keeps track of the progress of the ripping and encoding processes.
 // Outputs the progress to the terminal.
 type progressTracker struct {
-	statuses []titleStatus
-	mutex    sync.Mutex
-	err      error
+	statuses       []titleStatus
+	mutex          sync.Mutex
+	err            error
+	animationFrame int // Shared animation frame for synchronized ellipsis
 }
 
 type statusValue uint8
@@ -54,8 +55,6 @@ type titleStatus struct {
 	RippingProgress int
 	// Progress percentage for encoding (0-100, -1 for unknown).
 	EncodingProgress int
-	// Animation frame counter (0-2) for ellipsis animation.
-	AnimationFrame int
 	// Expected file size in bytes for ripping.
 	ExpectedSizeBytes int64
 	// Output file path being written (for polling).
@@ -91,12 +90,12 @@ func (pt *progressTracker) refreshDisplay() {
 		rippingStr := formatProgressStatus(
 			status.Ripping,
 			status.RippingProgress,
-			status.AnimationFrame,
+			pt.animationFrame,
 		)
 		encodingStr := formatProgressStatus(
 			status.Encoding,
 			status.EncodingProgress,
-			status.AnimationFrame,
+			pt.animationFrame,
 		)
 		rippingCol, _ := padString(rippingStr, 20)
 		encodingCol, _ := padString(encodingStr, 20)
@@ -197,7 +196,7 @@ func (pt *progressTracker) startProgressPoller(
 			case <-pollTicker.C:
 				pt.updateProgressFromFile(titleIndex, discId, expectedSize, outputPath)
 			case <-animTicker.C:
-				pt.updateAnimation(titleIndex, discId)
+				pt.updateAnimation()
 			}
 		}
 	}()
@@ -242,21 +241,19 @@ func (pt *progressTracker) updateProgressFromFile(
 	})
 }
 
-// updateAnimation increments the animation frame counter.
-func (pt *progressTracker) updateAnimation(titleIndex int, discId int) {
-	pt.applyChangeAndDisplay(titleIndex, discId, func(status *titleStatus) {
-		status.AnimationFrame = (status.AnimationFrame + 1) % 3
-	})
+// updateAnimation increments the shared animation frame counter and refreshes.
+func (pt *progressTracker) updateAnimation() {
+	pt.mutex.Lock()
+	defer pt.mutex.Unlock()
+
+	pt.animationFrame = (pt.animationFrame + 1) % 3
+	pt.refreshDisplay()
 }
 
-// startAnimationPoller starts a goroutine that only updates the animation
-// frame for encoding progress (no file size polling). Returns a function to
-// stop the poller.
-func (pt *progressTracker) startAnimationPoller(
-	ctx context.Context,
-	titleIndex int,
-	discId int,
-) func() {
+// startAnimationPoller starts a goroutine that only updates the shared
+// animation frame (no file size polling). Returns a function to stop the
+// poller.
+func (pt *progressTracker) startAnimationPoller(ctx context.Context) func() {
 	stopChan := make(chan struct{})
 	var stopOnce sync.Once
 
@@ -271,7 +268,7 @@ func (pt *progressTracker) startAnimationPoller(
 			case <-stopChan:
 				return
 			case <-animTicker.C:
-				pt.updateAnimation(titleIndex, discId)
+				pt.updateAnimation()
 			}
 		}
 	}()
