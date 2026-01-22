@@ -220,7 +220,7 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int) error {
 
 				tracker.applyChangeAndDisplay(params.TitleIndex, params.DiscId, func(status *titleStatus) {
 					status.Encoding = InProgress
-					status.EncodingProgress = -1 // Unknown progress for encoding
+					status.EncodingProgress = 0 // Unknown progress for encoding
 				})
 
 				// Make sure the input file exists
@@ -233,7 +233,13 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int) error {
 				// Start animation poller for encoding
 				stopAnimPoller := tracker.startAnimationPoller(ctx)
 
-				encErr := hb.encode(ctx, &params)
+				hbProgressUpdate := func(percent int) {
+					tracker.applyChangeAndDisplay(params.TitleIndex, params.DiscId, func(status *titleStatus) {
+						status.EncodingProgress = percent
+					})
+				}
+
+				encErr := hb.encode(ctx, &params, hbProgressUpdate)
 
 				// Stop animation poller regardless of success or failure
 				stopAnimPoller()

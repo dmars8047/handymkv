@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -82,7 +83,9 @@ type HandBrakePreset struct {
 	FileFormat string `json:"FileFormat"`
 }
 
-func (hb *HandBrakeCLI) encode(ctx context.Context, params *EncodingParams) error {
+func (hb *HandBrakeCLI) encode(ctx context.Context,
+	params *EncodingParams,
+	onProgress func(percent int)) error {
 	var args []string = []string{
 		"--input", params.MKVOutputPath,
 		"--output", params.HandBrakeOutputPath,
@@ -124,11 +127,48 @@ func (hb *HandBrakeCLI) encode(ctx context.Context, params *EncodingParams) erro
 		args...,
 	)
 
-	// Capture the combined output
-	output, err := cmd.CombinedOutput()
+	stdout, err := cmd.StdoutPipe()
+
 	if err != nil {
-		return NewExternalProcessError(fmt.Errorf("an error occurred while encoding %s - handbrakecli failure: %w", params.MKVOutputPath, err),
-			string(fmt.Sprintf("HandBrakeCLI Output\n----------------\n%s----------------\n\n", output)))
+		return fmt.Errorf("failed to create stderr pipe: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start HandBrakeCLI: %w", err)
+	}
+
+	// Format: "Encoding: task 1 of 1, 20.06 % (421.16 fps, avg 413.85 fps, ETA 00h02m29s)"
+	progressRegex := regexp.MustCompile(`Encoding:.*?(\d+\.?\d*)\s*%`)
+	scanner := bufio.NewScanner(stdout)
+
+	// Custom split function to yield on \r (carriage return) for real-time progress
+	// HandBrake uses \r for in-place updates, default scanner waits for \n
+	scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+		if atEOF && len(data) == 0 {
+			return 0, nil, nil
+		}
+		for i, b := range data {
+			if b == '\r' || b == '\n' {
+				return i + 1, data[0:i], nil
+			}
+		}
+		if atEOF {
+			return len(data), data, nil
+		}
+		return 0, nil, nil
+	})
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if matches := progressRegex.FindStringSubmatch(line); len(matches) > 1 {
+			if percent, err := strconv.ParseFloat(matches[1], 64); err == nil {
+				onProgress(int(percent))
+			}
+		}
+	}
+
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("an error occurred while encoding %s - handbrakecli failure: %w", params.MKVOutputPath, err)
 	}
 
 	return nil
