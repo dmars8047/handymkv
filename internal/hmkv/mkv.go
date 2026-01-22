@@ -12,24 +12,25 @@ import (
 	"strings"
 )
 
-// 2 - Disc Title
-// 8 - Number of chapters in file
-// 9 - Length of file in seconds
-// 10 - File size (GB)
-// 11 - File size (Bytes)
-// 27 - File name
-// 28 - Audio Short Code
-// 29 - Audio Long Code
 type TitleInfo struct {
 	// Index on disc
-	Index            int
-	DiscTitle        string
-	DiscId           int
-	Chapters         int
-	Length           string
-	FileSize         string
-	FileName         string
-	prependDiscToSub bool
+	Index int
+	// The descriptive title of the disc.
+	DiscTitle string
+	// The id of the disc that the title came from.
+	DiscId int
+	// The number of chapters that the title is comprised from.
+	Chapters int
+	// The duration of the title.
+	Length string
+	// The file size represented in MB or GB. For presentation to the user. Ex - 13.4 GB
+	FileSizeDesc string
+	// The true file size in bytes.
+	FileSizeBytes int
+	// The output file name.
+	FileName string
+	// Whether or not to prepend the disc number.
+	PrependDiscToSub bool
 }
 
 func GetMakeMKVExecutable() (string, error) {
@@ -81,7 +82,7 @@ func GetMakeMKVExecutable() (string, error) {
 }
 
 func (t *TitleInfo) SetPrependDiscToSubdirectory(val bool) {
-	t.prependDiscToSub = val
+	t.PrependDiscToSub = val
 }
 
 func (t *TitleInfo) GetEncodingFileName(config *handyMKVConfig) string {
@@ -96,7 +97,7 @@ func (t *TitleInfo) GetEncodingFileName(config *handyMKVConfig) string {
 }
 
 func (t *TitleInfo) Subdirectory() string {
-	if t.prependDiscToSub {
+	if t.PrependDiscToSub {
 		return fmt.Sprintf("HMKV_DISC_%d__%s", t.DiscId, strings.ReplaceAll(t.DiscTitle, " ", "_"))
 	}
 
@@ -201,6 +202,15 @@ func (mkv *MakeMKV) getTitlesFromDisc(discId int) ([]TitleInfo, error) {
 				}
 			}
 
+			// 2 - Disc Title
+			// 8 - Number of chapters in file
+			// 9 - Length of file in seconds
+			// 10 - File size (GB)
+			// 11 - File size (Bytes)
+			// 27 - File name
+			// 28 - Audio Short Code
+			// 29 - Audio Long Code
+
 			// Populate the relevant field based on the code
 			switch code {
 			case "8": // Number of Chapters
@@ -209,13 +219,15 @@ func (mkv *MakeMKV) getTitlesFromDisc(discId int) ([]TitleInfo, error) {
 				}
 			case "9": // Length
 				titleData[index].Length = value
-			case "10": // File Size
-				titleData[index].FileSize = value
+			case "10": // File Size Desc
+				titleData[index].FileSizeDesc = value
+			case "11":
+				titleData[index].FileSizeBytes, _ = strconv.Atoi(value)
 			case "27": // File Name
 				titleData[index].FileName = value
 			}
 
-			titleData[index].prependDiscToSub = false
+			titleData[index].PrependDiscToSub = false
 			titleData[index].DiscTitle = discTitle
 		}
 	}

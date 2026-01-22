@@ -54,7 +54,7 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int) error {
 		fmt.Printf("The following titles were read from the disc - %s\n\n", titles[0].DiscTitle)
 
 		for _, title := range titles {
-			fmt.Printf("ID: %d, Title Name: %s, Size: %s, Length: %s\n", title.Index, title.FileName, title.FileSize, title.Length)
+			fmt.Printf("ID: %d, Title Name: %s, Size: %s, Length: %s\n", title.Index, title.FileName, title.FileSizeDesc, title.Length)
 		}
 
 		var titleSelections string
@@ -132,11 +132,12 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int) error {
 
 	for i, title := range processTitles {
 		tracker.statuses[i] = titleStatus{
-			TitleIndex: title.Index,
-			Title:      title.FileName,
-			DiscId:     title.DiscId,
-			Ripping:    Pending,
-			Encoding:   Pending,
+			TitleIndex:        title.Index,
+			Title:             title.FileName,
+			DiscId:            title.DiscId,
+			Ripping:           Pending,
+			Encoding:          Pending,
+			ExpectedSizeBytes: int64(title.FileSizeBytes),
 		}
 	}
 
@@ -217,11 +218,10 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int) error {
 					return
 				}
 
-				applyInProgress := func(status *titleStatus) {
+				tracker.applyChangeAndDisplay(params.TitleIndex, params.DiscId, func(status *titleStatus) {
 					status.Encoding = InProgress
-				}
-
-				tracker.applyChangeAndDisplay(params.TitleIndex, params.DiscId, applyInProgress)
+					status.EncodingProgress = -1 // Unknown progress for encoding
+				})
 
 				// Make sure the input file exists
 				if _, err := os.Stat(params.MKVOutputPath); os.IsNotExist(err) {
@@ -230,7 +230,13 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int) error {
 					return
 				}
 
+				// Start animation poller for encoding
+				stopAnimPoller := tracker.startAnimationPoller(ctx, params.TitleIndex, params.DiscId)
+
 				encErr := hb.encode(ctx, &params)
+
+				// Stop animation poller regardless of success or failure
+				stopAnimPoller()
 
 				if encErr != nil {
 					tracker.setError(encErr)
@@ -238,12 +244,11 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int) error {
 					return
 				}
 
-				applyComplete := func(status *titleStatus) {
-					status.Encoding = Complete
-				}
-
 				// Update progress for encoding completion
-				tracker.applyChangeAndDisplay(params.TitleIndex, params.DiscId, applyComplete)
+				tracker.applyChangeAndDisplay(params.TitleIndex, params.DiscId, func(status *titleStatus) {
+					status.Encoding = Complete
+					status.EncodingProgress = 100
+				})
 			case <-ctx.Done():
 				return
 			}
@@ -294,13 +299,28 @@ func ripTitles(
 	cancelProcessing context.CancelFunc) {
 
 	for _, title := range processTitles {
+		mkvOutputDirectory := filepath.Join(config.MKVOutputDirectory, title.Subdirectory())
+		mkvOutputPath := filepath.Join(mkvOutputDirectory, title.FileName)
+
+		// Start progress poller before ripping
+		stopPoller := tracker.startProgressPoller(
+			ctx,
+			title.Index,
+			title.DiscId,
+			int64(title.FileSizeBytes),
+			mkvOutputPath,
+		)
+
 		tracker.applyChangeAndDisplay(title.Index, title.DiscId, func(status *titleStatus) {
 			status.Ripping = InProgress
+			status.RippingProgress = 0
+			status.OutputFilePath = mkvOutputPath
 		})
 
-		var mkvOutputDirectory string = filepath.Join(config.MKVOutputDirectory, title.Subdirectory())
-
 		ripErr := mkv.ripTitle(ctx, &title, mkvOutputDirectory)
+
+		// Stop the poller regardless of success or failure
+		stopPoller()
 
 		if ripErr != nil {
 			tracker.setError(ripErr)
@@ -308,22 +328,21 @@ func ripTitles(
 			return
 		}
 
-		applyComplete := func(status *titleStatus) {
-			status.Ripping = Complete
-		}
-
 		// Update progress for ripping completion
-		tracker.applyChangeAndDisplay(title.Index, title.DiscId, applyComplete)
+		tracker.applyChangeAndDisplay(title.Index, title.DiscId, func(status *titleStatus) {
+			status.Ripping = Complete
+			status.RippingProgress = 100
+		})
 
 		// Replace spaces with underscores for encoding run.
 		encodingOutputFileName := title.GetEncodingFileName(config)
 
-		var hbOutputDir string = filepath.Join(config.HBOutputDirectory, title.Subdirectory())
+		hbOutputDir := filepath.Join(config.HBOutputDirectory, title.Subdirectory())
 
 		encChannel <- EncodingParams{
 			TitleIndex:          title.Index,
 			DiscId:              title.DiscId,
-			MKVOutputPath:       filepath.Join(mkvOutputDirectory, title.FileName),
+			MKVOutputPath:       mkvOutputPath,
 			HandBrakeOutputPath: filepath.Join(hbOutputDir, encodingOutputFileName),
 			Quality:             config.EncodeConfig.Quality,
 			Encoder:             config.EncodeConfig.Encoder,
