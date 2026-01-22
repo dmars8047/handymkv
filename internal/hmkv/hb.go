@@ -2,8 +2,10 @@ package hmkv
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/user"
@@ -130,12 +132,26 @@ func (hb *HandBrakeCLI) encode(ctx context.Context,
 	stdout, err := cmd.StdoutPipe()
 
 	if err != nil {
+		return fmt.Errorf("failed to create stdout pipe: %w", err)
+	}
+
+	stderr, err := cmd.StderrPipe()
+
+	if err != nil {
 		return fmt.Errorf("failed to create stderr pipe: %w", err)
 	}
 
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("failed to start HandBrakeCLI: %w", err)
 	}
+
+	// Capture stderr in background while parsing stdout for progress
+	var stderrBuf bytes.Buffer
+	stderrDone := make(chan struct{})
+	go func() {
+		io.Copy(&stderrBuf, stderr)
+		close(stderrDone)
+	}()
 
 	// Format: "Encoding: task 1 of 1, 20.06 % (421.16 fps, avg 413.85 fps, ETA 00h02m29s)"
 	progressRegex := regexp.MustCompile(`Encoding:.*?(\d+\.?\d*)\s*%`)
@@ -167,8 +183,20 @@ func (hb *HandBrakeCLI) encode(ctx context.Context,
 		}
 	}
 
+	// Check for scanner errors
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("error reading HandBrakeCLI output: %w", err)
+	}
+
+	// Wait for stderr capture to complete
+	<-stderrDone
+
 	if err := cmd.Wait(); err != nil {
-		return fmt.Errorf("an error occurred while encoding %s - handbrakecli failure: %w", params.MKVOutputPath, err)
+		stderrOutput := stderrBuf.String()
+		return NewExternalProcessError(
+			fmt.Errorf("encoding failed for %s: %w", params.MKVOutputPath, err),
+			fmt.Sprintf("HandBrakeCLI Error Output:\n%s", stderrOutput),
+		)
 	}
 
 	return nil
