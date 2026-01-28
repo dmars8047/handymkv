@@ -11,10 +11,13 @@ import (
 // Keeps track of the progress of the ripping and encoding processes.
 // Outputs the progress to the terminal.
 type progressTracker struct {
-	statuses       []titleStatus
-	mutex          sync.Mutex
-	err            error
-	animationFrame int // Shared animation frame for synchronized ellipsis
+	statuses          []titleStatus
+	mutex             sync.Mutex
+	err               error
+	animationFrame    int // Shared animation frame for synchronized ellipsis
+	lastRefreshTime   time.Time
+	refreshInterval   time.Duration // Default: 200ms
+	pendingRefresh    bool          // True if data changed since last refresh
 }
 
 type statusValue uint8
@@ -61,22 +64,53 @@ type titleStatus struct {
 	OutputFilePath string
 }
 
-func (pt *progressTracker) applyChangeAndDisplay(titleIndex int, discId int, applyChangeFunc func(*titleStatus)) {
+// applyChange updates state without immediately displaying
+func (pt *progressTracker) applyChange(titleIndex int, discId int, applyChangeFunc func(*titleStatus)) {
 	pt.mutex.Lock()
 	defer pt.mutex.Unlock()
 
 	for i, status := range pt.statuses {
 		if status.TitleIndex == titleIndex && status.DiscId == discId {
 			applyChangeFunc(&pt.statuses[i])
+			pt.pendingRefresh = true // Mark that we need a refresh
 			break
 		}
 	}
+}
 
+// refreshDisplayIfNeeded refreshes display only if rate limit allows
+func (pt *progressTracker) refreshDisplayIfNeeded() {
+	pt.mutex.Lock()
+	defer pt.mutex.Unlock()
+
+	now := time.Now()
+	if !pt.pendingRefresh || now.Sub(pt.lastRefreshTime) < pt.refreshInterval {
+		return
+	}
+
+	pt.lastRefreshTime = now
+	pt.pendingRefresh = false
+	pt.refreshDisplay()
+}
+
+// forceRefresh forces immediate display update (for completions)
+func (pt *progressTracker) forceRefresh() {
+	pt.mutex.Lock()
+	defer pt.mutex.Unlock()
+
+	pt.lastRefreshTime = time.Now()
+	pt.pendingRefresh = false
 	pt.refreshDisplay()
 }
 
 func (pt *progressTracker) refreshDisplay() {
-	clear()
+	// Use cursor positioning instead of full clear after initial display
+	if !pt.lastRefreshTime.IsZero() {
+		fmt.Print("\033[H") // Move to top
+		clearFromCursor()   // Clear from cursor down
+	} else {
+		clear() // First time - do full clear
+	}
 	PrintLogo()
 	fmt.Printf("%-30s%-10s%-20s%-20s\n", "Title", "Disc", "Ripping", "Encoding")
 	fmt.Println(strings.Repeat("-", 80))
@@ -183,9 +217,7 @@ func (pt *progressTracker) startProgressPoller(
 
 	go func() {
 		pollTicker := time.NewTicker(2 * time.Second)
-		animTicker := time.NewTicker(500 * time.Millisecond)
 		defer pollTicker.Stop()
-		defer animTicker.Stop()
 
 		for {
 			select {
@@ -195,8 +227,6 @@ func (pt *progressTracker) startProgressPoller(
 				return
 			case <-pollTicker.C:
 				pt.updateProgressFromFile(titleIndex, discId, expectedSize, outputPath)
-			case <-animTicker.C:
-				pt.updateAnimation()
 			}
 		}
 	}()
@@ -236,30 +266,31 @@ func (pt *progressTracker) updateProgressFromFile(
 		percentage = -1
 	}
 
-	pt.applyChangeAndDisplay(titleIndex, discId, func(status *titleStatus) {
+	pt.applyChange(titleIndex, discId, func(status *titleStatus) {
 		status.RippingProgress = percentage
 	})
 }
 
-// updateAnimation increments the shared animation frame counter and refreshes.
+// updateAnimation increments the shared animation frame counter and marks for refresh.
 func (pt *progressTracker) updateAnimation() {
 	pt.mutex.Lock()
 	defer pt.mutex.Unlock()
 
 	pt.animationFrame = (pt.animationFrame + 1) % 3
-	pt.refreshDisplay()
+	pt.pendingRefresh = true // Mark for refresh, don't display directly
 }
 
-// startAnimationPoller starts a goroutine that only updates the shared
-// animation frame (no file size polling). Returns a function to stop the
-// poller.
-func (pt *progressTracker) startAnimationPoller(ctx context.Context) func() {
+// startRefreshTicker starts a goroutine that handles both animation and display refresh
+func (pt *progressTracker) startRefreshTicker(ctx context.Context) func() {
 	stopChan := make(chan struct{})
 	var stopOnce sync.Once
 
 	go func() {
 		animTicker := time.NewTicker(500 * time.Millisecond)
+		refreshTicker := time.NewTicker(pt.refreshInterval)
+
 		defer animTicker.Stop()
+		defer refreshTicker.Stop()
 
 		for {
 			select {
@@ -269,6 +300,8 @@ func (pt *progressTracker) startAnimationPoller(ctx context.Context) func() {
 				return
 			case <-animTicker.C:
 				pt.updateAnimation()
+			case <-refreshTicker.C:
+				pt.refreshDisplayIfNeeded()
 			}
 		}
 	}()

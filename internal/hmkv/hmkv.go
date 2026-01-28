@@ -127,7 +127,8 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int) error {
 
 	// Titles progress tracking
 	tracker := progressTracker{
-		statuses: make([]titleStatus, len(processTitles)),
+		statuses:        make([]titleStatus, len(processTitles)),
+		refreshInterval: 200 * time.Millisecond,
 	}
 
 	for i, title := range processTitles {
@@ -167,6 +168,9 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int) error {
 	var processWaitGroup sync.WaitGroup
 
 	processStartTime := time.Now()
+
+	// Start central refresh ticker for display updates
+	stopRefreshTicker := tracker.startRefreshTicker(ctx)
 
 	// MKV
 	processWaitGroup.Add(1)
@@ -218,9 +222,9 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int) error {
 					return
 				}
 
-				tracker.applyChangeAndDisplay(params.TitleIndex, params.DiscId, func(status *titleStatus) {
+				tracker.applyChange(params.TitleIndex, params.DiscId, func(status *titleStatus) {
 					status.Encoding = InProgress
-					status.EncodingProgress = 0 // Unknown progress for encoding
+					status.EncodingProgress = 0
 				})
 
 				// Make sure the input file exists
@@ -230,19 +234,13 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int) error {
 					return
 				}
 
-				// Start animation poller for encoding
-				stopAnimPoller := tracker.startAnimationPoller(ctx)
-
 				hbProgressUpdate := func(percent int) {
-					tracker.applyChangeAndDisplay(params.TitleIndex, params.DiscId, func(status *titleStatus) {
+					tracker.applyChange(params.TitleIndex, params.DiscId, func(status *titleStatus) {
 						status.EncodingProgress = percent
 					})
 				}
 
 				encErr := hb.encode(ctx, &params, hbProgressUpdate)
-
-				// Stop animation poller regardless of success or failure
-				stopAnimPoller()
 
 				if encErr != nil {
 					tracker.setError(encErr)
@@ -251,10 +249,11 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int) error {
 				}
 
 				// Update progress for encoding completion
-				tracker.applyChangeAndDisplay(params.TitleIndex, params.DiscId, func(status *titleStatus) {
+				tracker.applyChange(params.TitleIndex, params.DiscId, func(status *titleStatus) {
 					status.Encoding = Complete
 					status.EncodingProgress = 100
 				})
+				tracker.forceRefresh() // Force immediate display for completion
 			case <-ctx.Done():
 				return
 			}
@@ -262,6 +261,9 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int) error {
 	}()
 
 	processWaitGroup.Wait()
+
+	// Stop ticker IMMEDIATELY before printing final messages
+	stopRefreshTicker()
 
 	if tracker.err != nil {
 		return tracker.err
@@ -317,7 +319,7 @@ func ripTitles(
 			mkvOutputPath,
 		)
 
-		tracker.applyChangeAndDisplay(title.Index, title.DiscId, func(status *titleStatus) {
+		tracker.applyChange(title.Index, title.DiscId, func(status *titleStatus) {
 			status.Ripping = InProgress
 			status.RippingProgress = 0
 			status.OutputFilePath = mkvOutputPath
@@ -335,10 +337,11 @@ func ripTitles(
 		}
 
 		// Update progress for ripping completion
-		tracker.applyChangeAndDisplay(title.Index, title.DiscId, func(status *titleStatus) {
+		tracker.applyChange(title.Index, title.DiscId, func(status *titleStatus) {
 			status.Ripping = Complete
 			status.RippingProgress = 100
 		})
+		tracker.forceRefresh() // Force immediate display for completion
 
 		// Replace spaces with underscores for encoding run.
 		encodingOutputFileName := title.GetEncodingFileName(config)

@@ -33,6 +33,11 @@ func clear() {
 	fmt.Print("\033[H\033[2J") // Clear the terminal
 }
 
+// clearFromCursor clears from cursor to end of screen (less aggressive)
+func clearFromCursor() {
+	fmt.Print("\033[J")
+}
+
 // colorize wraps a string in the specified color
 func colorize(text statusValue, color string) string {
 	return fmt.Sprintf("%s%s%s", color, text.String(), colorReset)
