@@ -87,6 +87,16 @@ Usage of handymkv.exe:
 
 ## Installation
 
+### Install Script (Linux and macOS)
+
+The quickest way to install HandyMKV on Linux or macOS is with the install script:
+
+```shell
+curl -fsSL https://raw.githubusercontent.com/dmars8047/handymkv/release/install.sh | bash
+```
+
+The script automatically detects your OS and architecture, downloads the appropriate binary from the latest release, and installs it to `/usr/local/bin` (or `~/.local/bin` if `/usr/local/bin` is not writable).
+
 ### Pre-built Binaries
 
 Pre-built binaries are available on the [Releases](https://github.com/dmars8047/handymkv/releases) page for the following platforms:
