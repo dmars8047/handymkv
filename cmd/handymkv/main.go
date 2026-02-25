@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/user"
 	"path/filepath"
+	"runtime/debug"
 	"slices"
 	"strconv"
 	"strings"
@@ -13,6 +14,16 @@ import (
 )
 
 var applicationVersion = "dev"
+
+func getVersion() string {
+	if applicationVersion != "dev" {
+		return applicationVersion
+	}
+	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
+		return strings.TrimPrefix(info.Main.Version, "v")
+	}
+	return applicationVersion
+}
 
 func main() {
 	// Parse command line args
@@ -33,7 +44,7 @@ func main() {
 	hmkv.PrintLogo()
 
 	if version {
-		fmt.Printf("HandyMKV version %s\n\n", applicationVersion)
+		fmt.Printf("HandyMKV version %s\n\n", getVersion())
 		return
 	}
 
