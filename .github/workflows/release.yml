@@ -25,14 +25,23 @@ jobs:
       - name: Build all platforms
         run: make all
 
+      - name: Rename binaries for release
+        run: |
+          mv bin/linux-amd64/handymkv   bin/handymkv-linux-amd64
+          mv bin/linux-arm64/handymkv   bin/handymkv-linux-arm64
+          mv bin/darwin-amd64/handymkv  bin/handymkv-darwin-amd64
+          mv bin/darwin-arm64/handymkv  bin/handymkv-darwin-arm64
+          mv bin/windows-amd64/handymkv.exe bin/handymkv-windows-amd64.exe
+          mv bin/windows-arm64/handymkv.exe bin/handymkv-windows-arm64.exe
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           files: |
-            bin/linux-amd64/handymkv
-            bin/linux-arm64/handymkv
-            bin/darwin-amd64/handymkv
-            bin/darwin-arm64/handymkv
-            bin/windows-amd64/handymkv.exe
-            bin/windows-arm64/handymkv.exe
+            bin/handymkv-linux-amd64
+            bin/handymkv-linux-arm64
+            bin/handymkv-darwin-amd64
+            bin/handymkv-darwin-arm64
+            bin/handymkv-windows-amd64.exe
+            bin/handymkv-windows-arm64.exe
