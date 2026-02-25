@@ -87,9 +87,19 @@ Usage of handymkv.exe:
 
 ## Installation
 
-### Installing from GitHub
+### Pre-built Binaries
 
-HandyMKV is a Go application and can be installed using the following command:
+Pre-built binaries are available on the [Releases](https://github.com/dmars8047/handymkv/releases) page for the following platforms:
+
+- Linux (AMD64, ARM64)
+- macOS (Intel, Apple Silicon)
+- Windows (AMD64, ARM64)
+
+Download the appropriate binary for your system, place it in a directory on your `$PATH`, and you're ready to go.
+
+### Installing with Go
+
+HandyMKV can be installed using the `go install` command:
 
 ```shell
 go install github.com/dmars8047/handymkv/cmd/handymkv@latest
@@ -157,8 +167,6 @@ go install ./cmd/handymkv
 # Cross-compile (example for Linux AMD64)
 GOOS=linux GOARCH=amd64 go build -o bin/linux-amd64/handymkv ./cmd/handymkv
 ```
-
-Prebuilt binaries may be provided in the future.
 
 ## Basic Usage
 

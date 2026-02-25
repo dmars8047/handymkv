@@ -10,8 +10,9 @@ GO_BUILD=go build
 # Main package path
 MAIN_PATH=./cmd/handymkv
 
-# Build flags - to be used in the future for production builds
-# LDFLAGS=-ldflags="-s -w"
+# Version from git tag (strips leading 'v')
+VERSION=$(shell git describe --tags --always 2>/dev/null | sed 's/^v//')
+LDFLAGS=-ldflags="-X main.applicationVersion=$(VERSION)"
 
 # Detect current OS and architecture
 CURRENT_OS=$(shell go env GOOS)
@@ -42,7 +43,7 @@ help:
 current:
 	@echo "Building for current system: $(CURRENT_OS)-$(CURRENT_ARCH)"
 	@mkdir -p $(BIN_DIR)
-	GOOS=$(CURRENT_OS) GOARCH=$(CURRENT_ARCH) $(GO_BUILD) -o $(BIN_DIR)/$(BINARY_NAME)$(if $(filter windows,$(CURRENT_OS)),.exe,) $(MAIN_PATH)
+	GOOS=$(CURRENT_OS) GOARCH=$(CURRENT_ARCH) $(GO_BUILD) $(LDFLAGS) -o $(BIN_DIR)/$(BINARY_NAME)$(if $(filter windows,$(CURRENT_OS)),.exe,) $(MAIN_PATH)
 	@echo "Built: $(BIN_DIR)/$(BINARY_NAME)$(if $(filter windows,$(CURRENT_OS)),.exe,)"
 
 # Install to GOPATH/bin
@@ -59,39 +60,39 @@ all: linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 windows-amd64 windows-arm
 linux-amd64:
 	@echo "Building for Linux AMD64..."
 	@mkdir -p $(BIN_DIR)/linux-amd64
-	GOOS=linux GOARCH=amd64 $(GO_BUILD) -o $(BIN_DIR)/linux-amd64/$(BINARY_NAME) $(MAIN_PATH)
+	GOOS=linux GOARCH=amd64 $(GO_BUILD) $(LDFLAGS) -o $(BIN_DIR)/linux-amd64/$(BINARY_NAME) $(MAIN_PATH)
 	@echo "Built: $(BIN_DIR)/linux-amd64/$(BINARY_NAME)"
 
 linux-arm64:
 	@echo "Building for Linux ARM64..."
 	@mkdir -p $(BIN_DIR)/linux-arm64
-	GOOS=linux GOARCH=arm64 $(GO_BUILD) -o $(BIN_DIR)/linux-arm64/$(BINARY_NAME) $(MAIN_PATH)
+	GOOS=linux GOARCH=arm64 $(GO_BUILD) $(LDFLAGS) -o $(BIN_DIR)/linux-arm64/$(BINARY_NAME) $(MAIN_PATH)
 	@echo "Built: $(BIN_DIR)/linux-arm64/$(BINARY_NAME)"
 
 # macOS builds
 darwin-amd64:
 	@echo "Building for macOS AMD64 (Intel)..."
 	@mkdir -p $(BIN_DIR)/darwin-amd64
-	GOOS=darwin GOARCH=amd64 $(GO_BUILD) -o $(BIN_DIR)/darwin-amd64/$(BINARY_NAME) $(MAIN_PATH)
+	GOOS=darwin GOARCH=amd64 $(GO_BUILD) $(LDFLAGS) -o $(BIN_DIR)/darwin-amd64/$(BINARY_NAME) $(MAIN_PATH)
 	@echo "Built: $(BIN_DIR)/darwin-amd64/$(BINARY_NAME)"
 
 darwin-arm64:
 	@echo "Building for macOS ARM64 (Apple Silicon)..."
 	@mkdir -p $(BIN_DIR)/darwin-arm64
-	GOOS=darwin GOARCH=arm64 $(GO_BUILD) -o $(BIN_DIR)/darwin-arm64/$(BINARY_NAME) $(MAIN_PATH)
+	GOOS=darwin GOARCH=arm64 $(GO_BUILD) $(LDFLAGS) -o $(BIN_DIR)/darwin-arm64/$(BINARY_NAME) $(MAIN_PATH)
 	@echo "Built: $(BIN_DIR)/darwin-arm64/$(BINARY_NAME)"
 
 # Windows builds
 windows-amd64:
 	@echo "Building for Windows AMD64..."
 	@mkdir -p $(BIN_DIR)/windows-amd64
-	GOOS=windows GOARCH=amd64 $(GO_BUILD) -o $(BIN_DIR)/windows-amd64/$(BINARY_NAME).exe $(MAIN_PATH)
+	GOOS=windows GOARCH=amd64 $(GO_BUILD) $(LDFLAGS) -o $(BIN_DIR)/windows-amd64/$(BINARY_NAME).exe $(MAIN_PATH)
 	@echo "Built: $(BIN_DIR)/windows-amd64/$(BINARY_NAME).exe"
 
 windows-arm64:
 	@echo "Building for Windows ARM64..."
 	@mkdir -p $(BIN_DIR)/windows-arm64
-	GOOS=windows GOARCH=arm64 $(GO_BUILD) -o $(BIN_DIR)/windows-arm64/$(BINARY_NAME).exe $(MAIN_PATH)
+	GOOS=windows GOARCH=arm64 $(GO_BUILD) $(LDFLAGS) -o $(BIN_DIR)/windows-arm64/$(BINARY_NAME).exe $(MAIN_PATH)
 	@echo "Built: $(BIN_DIR)/windows-arm64/$(BINARY_NAME).exe"
 
 # Clean build artifacts

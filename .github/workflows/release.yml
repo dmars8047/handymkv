@@ -1,0 +1,38 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build all platforms
+        run: make all
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            bin/linux-amd64/handymkv
+            bin/linux-arm64/handymkv
+            bin/darwin-amd64/handymkv
+            bin/darwin-arm64/handymkv
+            bin/windows-amd64/handymkv.exe
+            bin/windows-arm64/handymkv.exe
