@@ -38,40 +38,40 @@ func (config *handyMKVConfig) String() string {
 	sb.WriteString("Encode Settings\n\n")
 
 	if config.EncodeConfig.Preset == "" && config.EncodeConfig.PresetFile == "" {
-		sb.WriteString(fmt.Sprintf("Encoder: %s\n", config.EncodeConfig.Encoder))
+		fmt.Fprintf(&sb, "Encoder: %s\n", config.EncodeConfig.Encoder)
 
 		if config.EncodeConfig.EncoderPreset != "" {
-			sb.WriteString(fmt.Sprintf("Encoder Preset: %s\n", config.EncodeConfig.EncoderPreset))
+			fmt.Fprintf(&sb, "Encoder Preset: %s\n", config.EncodeConfig.EncoderPreset)
 		} else {
-			sb.WriteString(fmt.Sprintf("Quality: %d\n", config.EncodeConfig.Quality))
+			fmt.Fprintf(&sb, "Quality: %d\n", config.EncodeConfig.Quality)
 		}
 
-		sb.WriteString(fmt.Sprintf("Audio Languages: %s\n", strings.Join(config.EncodeConfig.AudioLanguages, ", ")))
-		sb.WriteString(fmt.Sprintf("Include All Relevant Audio: %t\n", config.EncodeConfig.IncludeAllRelevantAudio))
-		sb.WriteString(fmt.Sprintf("Subtitle Languages: %s\n", strings.Join(config.EncodeConfig.SubtitleLanguages, ", ")))
-		sb.WriteString(fmt.Sprintf("Include All Relevant Subtitles: %t\n", config.EncodeConfig.IncludeAllRelevantSubtitles))
-		sb.WriteString(fmt.Sprintf("Output File Format: %s\n", config.EncodeConfig.OutputFileFormat))
+		fmt.Fprintf(&sb, "Audio Languages: %s\n", strings.Join(config.EncodeConfig.AudioLanguages, ", "))
+		fmt.Fprintf(&sb, "Include All Relevant Audio: %t\n", config.EncodeConfig.IncludeAllRelevantAudio)
+		fmt.Fprintf(&sb, "Subtitle Languages: %s\n", strings.Join(config.EncodeConfig.SubtitleLanguages, ", "))
+		fmt.Fprintf(&sb, "Include All Relevant Subtitles: %t\n", config.EncodeConfig.IncludeAllRelevantSubtitles)
+		fmt.Fprintf(&sb, "Output File Format: %s\n", config.EncodeConfig.OutputFileFormat)
 	} else {
 		if config.EncodeConfig.PresetFile != "" {
-			sb.WriteString(fmt.Sprintf("Preset File: %s\n", config.EncodeConfig.PresetFile))
+			fmt.Fprintf(&sb, "Preset File: %s\n", config.EncodeConfig.PresetFile)
 
 			if config.EncodeConfig.Preset != "" {
-				sb.WriteString(fmt.Sprintf("Custom HandBrake Preset: %s\n", config.EncodeConfig.Preset))
+				fmt.Fprintf(&sb, "Custom HandBrake Preset: %s\n", config.EncodeConfig.Preset)
 			}
 
 			if config.EncodeConfig.OutputFileFormat != "" {
-				sb.WriteString(fmt.Sprintf("Output File Format: %s\n", config.EncodeConfig.OutputFileFormat))
+				fmt.Fprintf(&sb, "Output File Format: %s\n", config.EncodeConfig.OutputFileFormat)
 			}
 		} else {
-			sb.WriteString(fmt.Sprintf("HandBrake Preset: %s\n", config.EncodeConfig.Preset))
+			fmt.Fprintf(&sb, "HandBrake Preset: %s\n", config.EncodeConfig.Preset)
 		}
 	}
 
 	sb.WriteString("\n")
 	sb.WriteString("General Settings\n\n")
-	sb.WriteString(fmt.Sprintf("MKV Output Directory: %s\n", config.MKVOutputDirectory))
-	sb.WriteString(fmt.Sprintf("HandBrake Output Directory: %s\n", config.HBOutputDirectory))
-	sb.WriteString(fmt.Sprintf("Automatically Delete Raw MKV Files: %t\n", config.DeleteRawMKVFiles))
+	fmt.Fprintf(&sb, "MKV Output Directory: %s\n", config.MKVOutputDirectory)
+	fmt.Fprintf(&sb, "HandBrake Output Directory: %s\n", config.HBOutputDirectory)
+	fmt.Fprintf(&sb, "Automatically Delete Raw MKV Files: %t\n", config.DeleteRawMKVFiles)
 
 	return sb.String()
 }
