@@ -64,6 +64,9 @@ type EncodingParams struct {
 	DiscId                      int      `json:"-"`
 	MKVOutputPath               string   `json:"-"`
 	HandBrakeOutputPath         string   `json:"-"`
+	RippedFileSizeBytes         int64    `json:"-"`
+	EncodedFileSizeBytes        int64    `json:"-"`
+	RippingDuration             string   `json:"-"`
 	Encoder                     string   `json:"encoder,omitempty"`
 	EncoderPreset               string   `json:"encoder_preset,omitempty"`
 	Quality                     int      `json:"quality,omitempty"`

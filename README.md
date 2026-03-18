@@ -21,6 +21,7 @@ As I developed HandyMKV, I found that I was able to add features that I found us
 - Concurrency to reduce overall processing time
 - Summary of space saved and time elapsed
 - Automated cleanup of raw unencoded files
+- Run history — browse and inspect past ripping/encoding sessions
 - Parsing of `HandBrakeCLI` and `makemkvcon` output to provide a more user-friendly experience
 
 ## Objectives
@@ -73,16 +74,21 @@ Documentation for the HandBrakeCLI can be found [here](https://handbrake.fr/docs
 
 ## Command Line Options
 
-HandyMKV has a number of command line options that can be used to control its behavior. These options are described below.
+HandyMKV has a number of command line options and subcommands that can be used to control its behavior.
 
 ```shell
-Usage of handymkv.exe:
+Usage of handymkv:
   -c    Configure. Runs the configuration wizard.
   -d string
         Discs. A comma delimited list of disc indexes to rip. Example: -d 0,1,2 (default "0")
   -l    List. Lists the available discs. The disc index is required to rip a disc. Drives without a valid disc inserted will not be listed.
   -r    Read. Reads and outputs the first encountered configuration file. The current working directory is searched first, then the user-level configuration.
   -v    Version. Prints the version of the application.
+
+Subcommands:
+  history             Show a summary list of past runs.
+  history <number>    Show details for a specific past run.
+  history clear       Delete all manifest files from the run history directory.
 ```
 
 ## Installation
@@ -207,6 +213,39 @@ All output files will be stored in the directory specified in the configuration 
 
 Note: If there is a `config.json` file in the working directory at execution time, that file will be used instead of the user-wide configuration file.
 
+## Run History
+
+After each run, HandyMKV writes a manifest file recording what was ripped and encoded, file sizes, durations, and whether raw MKV files were deleted. These manifests can be browsed at any time with the `history` subcommand.
+
+**List all past runs:**
+```shell
+handymkv history
+```
+
+**Inspect a specific run:**
+```shell
+handymkv history 3
+```
+
+**Clear all saved history:**
+```shell
+handymkv history clear
+```
+This will show the number of files to be deleted and prompt for confirmation before proceeding.
+
+### Manifest File Location
+
+By default, manifest files are stored alongside the main configuration:
+
+- Unix: `~/.config/handymkv/manifests/`
+- Windows: `%APPDATA%\handymkv\manifests\`
+
+A custom directory can be set during the configuration wizard (`handymkv -c`), or by setting `manifest_directory` in `config.json`.
+
+### Disabling Run History
+
+Run history can be disabled entirely via the configuration wizard or by setting `"disable_manifests": true` in `config.json`. When disabled, `handymkv history` and `handymkv history clear` will display an informational message rather than attempting to read or modify manifest files.
+
 ## Multi-Disc Support
 
 HandyMKV supports ripping and encoding multiple discs in a single run. This option is intended for when mutliple disc drives are available and connected to the host.
@@ -220,3 +259,9 @@ To see a list of available discs, use the `-l` flag. Example: `handymkv -l`.
 ## A Note on Concurrency
 
 HandyMKV will attempt to execute tasks concurrently to reduce the overall time taken to complete the process. However, encoding tasks are resource intensive and running multiple encoding tasks is likely to slow down the overall process. Likewise ripping tasks are bottle-necked by the speed of the disc drive. For this reason HandyMKV will execute ripping and encoding pipelines concurrently but each task in those pipelines will be executed sequentially. In multi-disc runs, each disc drive's ripping process will be processed concurrently.
+
+## Support
+
+If you find HandyMKV useful, please consider supporting the project:
+
+[Buy me a coffee on Ko-fi](https://ko-fi.com/dmars8047)

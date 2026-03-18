@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 	"os/user"
 	"path/filepath"
 	"runtime/debug"
@@ -26,6 +27,43 @@ func getVersion() string {
 }
 
 func main() {
+	// Handle subcommands before flag.Parse()
+	if len(os.Args) > 1 && os.Args[1] == "history" {
+		hmkv.PrintLogo()
+
+		cfg, cfgErr := hmkv.ReadConfig()
+		if cfgErr == hmkv.ErrConfigNotFound {
+			fmt.Println("No configuration found. Please run the configuration wizard with 'handymkv -c'.")
+			fmt.Println()
+			return
+		}
+		if cfgErr != nil {
+			fmt.Printf("An error occurred reading the configuration file: %v\n\n", cfgErr)
+			return
+		}
+		if cfg.DisableManifests {
+			fmt.Println("Run history is disabled in your configuration.")
+			fmt.Println()
+			return
+		}
+
+		if len(os.Args) > 2 && os.Args[2] == "clear" {
+			if err := hmkv.ClearHistory(); err != nil {
+				fmt.Printf("An error occurred clearing run history: %v\n\n", err)
+			}
+			return
+		}
+
+		var index int = -1
+		if len(os.Args) > 2 {
+			index, _ = strconv.Atoi(os.Args[2])
+		}
+		if err := hmkv.PrintHistory(index); err != nil {
+			fmt.Printf("An error occurred reading run history: %v\n\n", err)
+		}
+		return
+	}
+
 	// Parse command line args
 	var discIds string
 	var version bool
@@ -38,6 +76,15 @@ func main() {
 	flag.BoolVar(&readConfig, "r", false, "Read. Reads and outputs the first encountered configuration file. The current working directory is searched first, then the user-level configuration.")
 	flag.BoolVar(&listDiscs, "l", false, "List. Lists the available discs. The disc index is required to rip a disc. Drives without a valid disc inserted will not be listed.")
 	flag.StringVar(&discIds, "d", "0", "Discs. A comma delimited list of disc indexes to rip. Example: -d 0,1,2")
+
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
+		flag.PrintDefaults()
+		fmt.Fprintf(flag.CommandLine.Output(), "\nSubcommands:\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "  history\n    \tShow a summary list of past runs.\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "  history <number>\n    \tShow details for a specific past run.\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "  history clear\n    \tDelete all manifest files from the run history directory.\n")
+	}
 
 	flag.Parse()
 
@@ -140,7 +187,7 @@ func main() {
 
 	slices.Sort(discIdInts)
 
-	err = hmkv.Exec(mkv, hb, discIdInts)
+	err = hmkv.Exec(mkv, hb, discIdInts, getVersion())
 	if err != nil {
 		if err == hmkv.ErrConfigNotFound {
 			fmt.Printf("Config file not found. Please run the configuration wizard with 'handymkv -c'.\n\n")

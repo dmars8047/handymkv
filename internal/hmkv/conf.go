@@ -26,10 +26,12 @@ var ErrConfigNotFound = errors.New("config file not found")
 type configFileLocation int
 
 type handyMKVConfig struct {
-	EncodeConfig       EncodingParams `json:"encoding_params"`
-	MKVOutputDirectory string         `json:"mkv_output_directory"`
-	HBOutputDirectory  string         `json:"handbrake_output_directory"`
-	DeleteRawMKVFiles  bool           `json:"delete_raw_mkv_files"`
+	EncodeConfig        EncodingParams `json:"encoding_params"`
+	MKVOutputDirectory  string         `json:"mkv_output_directory"`
+	HBOutputDirectory   string         `json:"handbrake_output_directory"`
+	DeleteRawMKVFiles   bool           `json:"delete_raw_mkv_files"`
+	DisableManifests    bool           `json:"disable_manifests,omitempty"`
+	ManifestDirectory   string         `json:"manifest_directory,omitempty"`
 }
 
 func (config *handyMKVConfig) String() string {
@@ -72,6 +74,10 @@ func (config *handyMKVConfig) String() string {
 	fmt.Fprintf(&sb, "MKV Output Directory: %s\n", config.MKVOutputDirectory)
 	fmt.Fprintf(&sb, "HandBrake Output Directory: %s\n", config.HBOutputDirectory)
 	fmt.Fprintf(&sb, "Automatically Delete Raw MKV Files: %t\n", config.DeleteRawMKVFiles)
+	fmt.Fprintf(&sb, "Disable Run History:                %t\n", config.DisableManifests)
+	if !config.DisableManifests && config.ManifestDirectory != "" {
+		fmt.Fprintf(&sb, "Manifest Directory:                 %s\n", config.ManifestDirectory)
+	}
 
 	return sb.String()
 }
@@ -423,6 +429,24 @@ func promptForConfig(hb *HandBrakeCLI, configLocationSelection int) (*handyMKVCo
 		true)
 
 	clear()
+
+	config.DisableManifests = promptForBool(
+		"Disable run history logging? [y/N]",
+		"If disabled, handymkv will not write manifest files after each run. Run history will not be available.",
+		false,
+	)
+	clear()
+
+	if !config.DisableManifests {
+		defaultManifestDir, _ := getManifestDir()
+		config.ManifestDirectory = promptForString(
+			"Where should run history (manifest files) be saved?",
+			"Absolute path to a directory.",
+			defaultManifestDir,
+			nil,
+		)
+		clear()
+	}
 
 	return &config, nil
 }

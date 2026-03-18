@@ -15,7 +15,7 @@ import (
 // Executes the main functionality of the program.
 // Reads the configuration file, reads titles from the disc, prompts the user for which titles they want to rip,
 // and processes the selected titles.
-func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int) error {
+func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int, appVersion string) error {
 	config, err := ReadConfig()
 
 	if err != nil {
@@ -166,6 +166,8 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int) error {
 	ctx, cancelProcessing := context.WithCancel(context.Background())
 	var encChannel = make(chan EncodingParams, len(processTitles))
 	var processWaitGroup sync.WaitGroup
+	var manifestMu sync.Mutex
+	var manifestEntries []EncodingParams
 
 	processStartTime := time.Now()
 
@@ -254,6 +256,14 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int) error {
 					status.EncodingProgress = 100
 				})
 				tracker.forceRefresh() // Force immediate display for completion
+
+				if stat, err := os.Stat(params.HandBrakeOutputPath); err == nil {
+					params.EncodedFileSizeBytes = stat.Size()
+				}
+
+				manifestMu.Lock()
+				manifestEntries = append(manifestEntries, params)
+				manifestMu.Unlock()
 			case <-ctx.Done():
 				return
 			}
@@ -270,6 +280,28 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int) error {
 	}
 
 	processDuration := time.Since(processStartTime).Round(time.Second)
+
+	// Write run manifest
+	if !config.DisableManifests {
+		manifestDir := config.ManifestDirectory
+		if manifestDir == "" {
+			var mdErr error
+			manifestDir, mdErr = getManifestDir()
+			if mdErr != nil {
+				fmt.Printf("\nWarning: could not determine manifest directory: %v\n", mdErr)
+				manifestDir = ""
+			}
+		}
+		if manifestDir != "" {
+			m := buildManifest(processTitles, manifestEntries, processStartTime, processDuration, config.DeleteRawMKVFiles, appVersion)
+			manifestPath, wErr := writeManifest(manifestDir, processStartTime, m)
+			if wErr != nil {
+				fmt.Printf("\nWarning: could not write manifest: %v\n", wErr)
+			} else {
+				fmt.Printf("\nManifest written to: %s\n", manifestPath)
+			}
+		}
+	}
 
 	fmt.Printf("\nOperation Complete. Time Elapsed - %s\n", formatTimeElapsedString(processDuration))
 
@@ -310,6 +342,8 @@ func ripTitles(
 		mkvOutputDirectory := filepath.Join(config.MKVOutputDirectory, title.Subdirectory())
 		mkvOutputPath := filepath.Join(mkvOutputDirectory, title.FileName)
 
+		ripStartTime := time.Now()
+
 		// Start progress poller before ripping
 		stopPoller := tracker.startProgressPoller(
 			ctx,
@@ -343,6 +377,12 @@ func ripTitles(
 		})
 		tracker.forceRefresh() // Force immediate display for completion
 
+		ripDuration := time.Since(ripStartTime).Round(time.Second)
+		var rippedSizeBytes int64
+		if stat, err := os.Stat(mkvOutputPath); err == nil {
+			rippedSizeBytes = stat.Size()
+		}
+
 		// Replace spaces with underscores for encoding run.
 		encodingOutputFileName := title.GetEncodingFileName(config)
 
@@ -353,6 +393,8 @@ func ripTitles(
 			DiscId:              title.DiscId,
 			MKVOutputPath:       mkvOutputPath,
 			HandBrakeOutputPath: filepath.Join(hbOutputDir, encodingOutputFileName),
+			RippedFileSizeBytes: rippedSizeBytes,
+			RippingDuration:     ripDuration.String(),
 			Quality:             config.EncodeConfig.Quality,
 			Encoder:             config.EncodeConfig.Encoder,
 			EncoderPreset:       config.EncodeConfig.EncoderPreset,
