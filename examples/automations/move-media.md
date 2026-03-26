@@ -8,9 +8,10 @@ The script changes the group ownership of encoded files and moves them to a medi
 
 For each file in the encoded output directory:
 
-1. Changes the file's group to the specified group name via `chgrp`
-2. Sets file permissions to `0774` (owner and group can read/write/execute, others can read)
-3. Moves the file to the destination media directory
+1. Strips the trailing `_t##` identifier from the filename before the extension (e.g. `My_Movie_t00.mkv` → `My_Movie.mkv`). This artifact is commonly added by MakeMKV during disc ripping.
+2. Changes the file's group to the specified group name via `chgrp`
+3. Sets file permissions to `0774` (owner and group can read/write/execute, others can read)
+4. Moves the file to the destination media directory with the cleaned filename
 
 ## Parameters
 
@@ -34,9 +35,9 @@ For each file in the encoded output directory:
    - **Command**: `/path/to/examples/automations/move-media.sh`
    - **Param 1**: name `encoded_dir`, source `hmkv_output`, key `hb_output_dir`
    - **Param 2**: name `media_dir`, source `prompt`
-   - **Param 3**: name `group_name`, source `prompt`, default `media`
+   - **Param 3**: name `group_name`, source `static`, value `media` (or your group name)
 
-3. Run HandyMKV and select the automation when prompted, or use the `-a` flag:
+3. Run HandyMKV with the `-a` flag:
 
    ```shell
    handymkv -a move-media

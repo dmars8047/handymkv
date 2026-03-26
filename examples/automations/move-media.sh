@@ -36,10 +36,15 @@ fi
 mkdir -p "$HMKV_PARAM_MEDIA_DIR"
 
 find "$HMKV_PARAM_ENCODED_DIR" -type f | while read -r file; do
+    filename=$(basename "$file")
+
+    # Strip trailing _t## identifier before the extension (e.g. My_Movie_t00.mkv -> My_Movie.mkv)
+    cleaned=$(echo "$filename" | sed 's/_t[0-9][0-9]\(\.[^.]*\)$/\1/')
+
     chgrp "$HMKV_PARAM_GROUP_NAME" "$file"
     chmod 0774 "$file"
-    mv "$file" "$HMKV_PARAM_MEDIA_DIR/"
-    echo "Moved: $(basename "$file")"
+    mv "$file" "$HMKV_PARAM_MEDIA_DIR/$cleaned"
+    echo "Moved: $filename -> $cleaned"
 done
 
 echo "Done. Files moved to $HMKV_PARAM_MEDIA_DIR"

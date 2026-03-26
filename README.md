@@ -278,12 +278,9 @@ Automation files are stored as JSON in:
 
 ### Running Automations
 
-Automations can be selected in two ways:
+Use the `-a` flag to specify automations by name: `handymkv -a move-to-plex,notify-discord`
 
-1. **Interactive prompt** -- if you have automations configured, HandyMKV will ask which ones to run during the normal execution flow.
-2. **CLI flag** -- use `-a` to pre-select automations by name: `handymkv -a move-to-plex,notify-discord`
-
-If no automations exist, no prompt is shown.
+Automations run after encoding completes. If the same name is provided more than once, it will only run once.
 
 ### Parameter Sources
 
@@ -311,28 +308,22 @@ Scripts inherit the full OS environment, so they can read environment variables 
 
 > **Note:** Automations run *before* raw MKV files are deleted. If your script needs to act on the raw files (e.g. inspect or move them), it will have access to them via `mkv_output_dir`.
 
-### Example: Move Encoded Files to Plex
+### Example: Move Encoded Files to a Media Directory
 
-Create a script `move-to-plex.sh`:
-
-```bash
-#!/bin/bash
-echo "Moving files from $HMKV_PARAM_ENCODED_DIR to $HMKV_PARAM_DESTINATION_DIR"
-mv "$HMKV_PARAM_ENCODED_DIR"/* "$HMKV_PARAM_DESTINATION_DIR/"
-echo "Done."
-```
-
-Then create the automation:
+Create an automation using the included example script:
 
 ```shell
 handymkv automations create
 ```
 
 Configure it with:
-- **Name**: `move-to-plex`
-- **Command**: `/path/to/move-to-plex.sh`
-- **Param 1**: `destination_dir` (source: `prompt`, default: `/mnt/media/plex/movies`)
-- **Param 2**: `encoded_dir` (source: `hmkv_output`, key: `hb_output_dir`)
+- **Name**: `move-media`
+- **Command**: `/path/to/examples/automations/move-media.sh`
+- **Param 1**: `encoded_dir` (source: `hmkv_output`, key: `hb_output_dir`)
+- **Param 2**: `media_dir` (source: `prompt`)
+- **Param 3**: `group_name` (source: `static`, value: `media` or your group name)
+
+The script strips the trailing `_t##` identifier MakeMKV appends to filenames (e.g. `My_Movie_t00.mkv` → `My_Movie.mkv`), sets group ownership and permissions, then moves files to the destination directory.
 
 ### Error Handling
 
@@ -344,9 +335,11 @@ Running automations...
   notify-discord: FAILED (exit code 1)
 ```
 
+Exit codes are recorded in the run manifest and are visible when inspecting history with `handymkv history <number>`.
+
 ### Example Scripts
 
-An example automation script is available in the repository under [`examples/automations/`](examples/automations/). It demonstrates all three parameter source types: `hmkv_output` (encoded output directory), `prompt` (destination media directory), and `static` (group name to assign to files).
+An example automation script is available in the repository under [`examples/automations/`](examples/automations/). It demonstrates all three parameter source types: `hmkv_output` (encoded output directory), `prompt` (destination media directory), and `static` (group name).
 
 ## Multi-Disc Support
 
