@@ -353,7 +353,6 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int, appVersion string, auto
 			} else {
 				fmt.Printf("Manifest written to: %s\n", manifestPath)
 			}
-			_ = manifestPath
 		}
 	}
 

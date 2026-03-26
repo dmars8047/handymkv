@@ -259,10 +259,14 @@ func main() {
 
 	var autoNames []string
 	if automationNames != "" {
+		seen := make(map[string]struct{})
 		for _, name := range strings.Split(automationNames, ",") {
 			name = strings.TrimSpace(name)
 			if name != "" {
-				autoNames = append(autoNames, name)
+				if _, ok := seen[name]; !ok {
+					autoNames = append(autoNames, name)
+					seen[name] = struct{}{}
+				}
 			}
 		}
 	}

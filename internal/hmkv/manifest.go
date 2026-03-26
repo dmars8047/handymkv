@@ -34,9 +34,10 @@ type manifestAutomationParam struct {
 }
 
 type manifestAutomation struct {
-	Name    string                    `json:"name"`
-	Command string                    `json:"command"`
-	Params  []manifestAutomationParam `json:"params,omitempty"`
+	Name     string                    `json:"name"`
+	Command  string                    `json:"command"`
+	Params   []manifestAutomationParam `json:"params,omitempty"`
+	ExitCode int                       `json:"exit_code"`
 }
 
 type manifest struct {
@@ -309,7 +310,11 @@ func PrintHistory(index int) error {
 	if len(m.Automations) > 0 {
 		fmt.Printf("\nAutomations:\n")
 		for _, a := range m.Automations {
-			fmt.Printf("  %s (%s)\n", a.Name, a.Command)
+			outcome := "OK"
+			if a.ExitCode != 0 {
+				outcome = fmt.Sprintf("FAILED (exit code %d)", a.ExitCode)
+			}
+			fmt.Printf("  %s (%s) — %s\n", a.Name, a.Command, outcome)
 			for _, p := range a.Params {
 				fmt.Printf("    %s = %s\n", p.Name, p.Value)
 			}

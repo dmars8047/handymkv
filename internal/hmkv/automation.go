@@ -49,6 +49,14 @@ type Automation struct {
 	Params  []AutomationParam `json:"params,omitempty"`
 }
 
+// validateAutomationName rejects names that could escape the automations directory.
+func validateAutomationName(name string) error {
+	if strings.ContainsAny(name, `/\`) || strings.Contains(name, "..") {
+		return fmt.Errorf("automation name '%s' contains invalid characters (no path separators or '..' allowed)", name)
+	}
+	return nil
+}
+
 // getAutomationsDir returns the OS-appropriate automations directory path.
 func getAutomationsDir() (string, error) {
 	if runtime.GOOS == "windows" {
@@ -83,6 +91,7 @@ func ListAutomations() ([]Automation, error) {
 	for _, f := range files {
 		a, err := readAutomationFile(f)
 		if err != nil {
+			fmt.Printf("Warning: could not load automation file '%s': %v\n", filepath.Base(f), err)
 			continue
 		}
 		automations = append(automations, *a)
@@ -93,6 +102,10 @@ func ListAutomations() ([]Automation, error) {
 
 // LoadAutomation reads a single automation by name.
 func LoadAutomation(name string) (*Automation, error) {
+	if err := validateAutomationName(name); err != nil {
+		return nil, err
+	}
+
 	dir, err := getAutomationsDir()
 	if err != nil {
 		return nil, err
@@ -110,6 +123,9 @@ func readAutomationFile(path string) (*Automation, error) {
 	var a Automation
 	if err := json.Unmarshal(data, &a); err != nil {
 		return nil, err
+	}
+	if a.Command == "" {
+		return nil, fmt.Errorf("automation '%s' has an empty command field", a.Name)
 	}
 	return &a, nil
 }
@@ -141,6 +157,10 @@ func SaveAutomation(a *Automation) error {
 
 // DeleteAutomation deletes an automation file after confirmation.
 func DeleteAutomation(name string) error {
+	if err := validateAutomationName(name); err != nil {
+		return err
+	}
+
 	dir, err := getAutomationsDir()
 	if err != nil {
 		return err
@@ -262,6 +282,11 @@ func CreateAutomation() error {
 
 	// Sanitize name for use as filename
 	name = strings.ReplaceAll(strings.TrimSpace(name), " ", "-")
+
+	if err := validateAutomationName(name); err != nil {
+		fmt.Printf("Invalid name: %v\n", err)
+		return nil
+	}
 
 	command := promptForString(
 		"Command to execute:",
@@ -424,12 +449,6 @@ func RunAutomations(automations []Automation, preRunParams map[string]string, ou
 			})
 		}
 
-		entries = append(entries, manifestAutomation{
-			Name:    a.Name,
-			Command: a.Command,
-			Params:  manifestParams,
-		})
-
 		// Execute via shell
 		var cmd *exec.Cmd
 		if runtime.GOOS == "windows" {
@@ -440,16 +459,26 @@ func RunAutomations(automations []Automation, preRunParams map[string]string, ou
 
 		cmd.Env = env
 
+		exitCode := 0
 		err := cmd.Run()
 		if err != nil {
 			if exitErr, ok := err.(*exec.ExitError); ok {
-				fmt.Printf("  %s: FAILED (exit code %d)\n", a.Name, exitErr.ExitCode())
+				exitCode = exitErr.ExitCode()
+				fmt.Printf("  %s: FAILED (exit code %d)\n", a.Name, exitCode)
 			} else {
+				exitCode = -1
 				fmt.Printf("  %s: FAILED (%v)\n", a.Name, err)
 			}
 		} else {
 			fmt.Printf("  %s: OK\n", a.Name)
 		}
+
+		entries = append(entries, manifestAutomation{
+			Name:     a.Name,
+			Command:  a.Command,
+			Params:   manifestParams,
+			ExitCode: exitCode,
+		})
 	}
 
 	fmt.Println()
