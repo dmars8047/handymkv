@@ -1,11 +1,20 @@
 package hmkv
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
 )
+
+var stdinReader = bufio.NewReader(os.Stdin)
+
+func readLine() string {
+	line, _ := stdinReader.ReadString('\n')
+	return strings.TrimSpace(line)
+}
 
 // ANSI color codes
 const (
@@ -59,7 +68,6 @@ func padString(s string, width int) (string, bool) {
 }
 
 func promptForSelection(prompt string, options []string) string {
-	var input string
 	fmt.Printf("%s\n\n", prompt)
 
 	// list options with a number so the user can select one
@@ -73,7 +81,7 @@ func promptForSelection(prompt string, options []string) string {
 
 	for {
 		fmt.Println()
-		fmt.Scanln(&input)
+		input := readLine()
 
 		// Make sure the input is a number
 		selection, err := strconv.Atoi(input)
@@ -95,12 +103,12 @@ func promptForSelection(prompt string, options []string) string {
 		break
 	}
 
+	fmt.Println()
 	return result
 }
 
 // Prompts the user for a string value. If the user provides an empty string, the default value is returned.
 func promptForString(prompt, explain, defaultValue string, validValues []string) string {
-	var input string
 	fmt.Printf("%s\n\n", prompt)
 
 	if explain != "" {
@@ -122,10 +130,8 @@ func promptForString(prompt, explain, defaultValue string, validValues []string)
 		fmt.Printf("\nDefault: %s\n\n", defaultValue)
 	}
 
-	fmt.Scanln(&input)
+	input := readLine()
 	fmt.Println()
-
-	input = strings.TrimSpace(input)
 
 	if input == "" {
 		return defaultValue
@@ -136,31 +142,24 @@ func promptForString(prompt, explain, defaultValue string, validValues []string)
 
 // Prompts the user for an integer value. If the user provides an empty string, the default value is returned.
 func promptForInt(prompt string) int {
-	var input string
 	fmt.Printf("%s\n\n", prompt)
 
-	var value int
-	var err error
-
 	for {
-		fmt.Scanln(&input)
+		input := readLine()
 
-		value, err = strconv.Atoi(input)
+		value, err := strconv.Atoi(input)
 
 		if err != nil {
 			fmt.Printf("\nInvalid value. Please enter a number.\n")
 			continue
 		}
 
-		break
+		return value
 	}
-
-	return value
 }
 
 // Prompts the user for a string slice value. If the user provides an empty string, the default value is returned.
 func promptForStringSlice(prompt, explain, defaultValue string) []string {
-	var input string
 	fmt.Printf("%s\n\n", prompt)
 
 	if explain != "" {
@@ -171,7 +170,7 @@ func promptForStringSlice(prompt, explain, defaultValue string) []string {
 		fmt.Printf("Default: %s\n\n", defaultValue)
 	}
 
-	fmt.Scanln(&input)
+	input := readLine()
 	fmt.Println()
 
 	if input == "" {
@@ -183,29 +182,27 @@ func promptForStringSlice(prompt, explain, defaultValue string) []string {
 
 // Prompts the user for a boolean value. If the user provides an empty string, the default value is returned.
 func promptForBool(prompt, explain string, defaultValue bool) bool {
-	var input string
+	if explain != "" {
+		fmt.Printf("%s\n\n", explain)
+	}
 
-	defaultStr := "N"
+	defaultStr := "[y/N]"
 
 	if defaultValue {
-		defaultStr = "y"
+		defaultStr = "[Y/n]"
 	}
 
-	fmt.Printf("%s\n\n", prompt)
+	fmt.Printf("%s %s: ", prompt, defaultStr)
 
-	if explain != "" {
-		fmt.Printf("%s\n", explain)
-	}
-
-	fmt.Printf("\nDefault: %s\n\n", defaultStr)
-
-	fmt.Scanln(&input)
+	input := strings.ToLower(readLine())
 	fmt.Println()
-
-	input = strings.ToLower(strings.TrimSpace(input))
 
 	if input == "y" {
 		return true
+	}
+
+	if input == "n" {
+		return false
 	}
 
 	return defaultValue

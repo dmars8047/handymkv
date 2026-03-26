@@ -15,7 +15,7 @@ import (
 // Executes the main functionality of the program.
 // Reads the configuration file, reads titles from the disc, prompts the user for which titles they want to rip,
 // and processes the selected titles.
-func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int, appVersion string) error {
+func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int, appVersion string, automationNames []string) error {
 	config, err := ReadConfig()
 
 	if err != nil {
@@ -61,7 +61,7 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int, appVersion string) erro
 
 		// Prompt the user for input
 		fmt.Print("\nEnter the IDs of the titles to process (0,1,2...) or enter 'all' to process all titles: \n\n")
-		fmt.Scanln(&titleSelections)
+		titleSelections = readLine()
 
 		// Remove invalid characters
 		titleSelections = strings.ReplaceAll(titleSelections, " ", "")
@@ -119,9 +119,9 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int, appVersion string) erro
 		discNames[strings.ToLower(title.DiscTitle)]++
 	}
 
-	for _, title := range processTitles {
-		if discNames[strings.ToLower(title.DiscTitle)] > 1 {
-			title.SetPrependDiscToSubdirectory(true)
+	for i := range processTitles {
+		if discNames[strings.ToLower(processTitles[i].DiscTitle)] > 1 {
+			processTitles[i].SetPrependDiscToSubdirectory(true)
 		}
 	}
 
@@ -162,6 +162,28 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int, appVersion string) erro
 	}
 
 	fmt.Println()
+
+	// Automation selection and pre-run param collection
+	var selectedAutomations []Automation
+	var preRunParams map[string]string
+
+	for _, name := range automationNames {
+		a, err := LoadAutomation(name)
+		if err != nil {
+			fmt.Printf("Warning: could not load automation '%s': %v\n", name, err)
+			continue
+		}
+		selectedAutomations = append(selectedAutomations, *a)
+	}
+
+	if len(selectedAutomations) > 0 {
+		var paramErr error
+		preRunParams, paramErr = resolvePreRunParams(selectedAutomations)
+		if paramErr != nil {
+			fmt.Printf("Warning: %v\nAutomations will be skipped.\n\n", paramErr)
+			selectedAutomations = nil
+		}
+	}
 
 	ctx, cancelProcessing := context.WithCancel(context.Background())
 	var encChannel = make(chan EncodingParams, len(processTitles))
@@ -281,28 +303,6 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int, appVersion string) erro
 
 	processDuration := time.Since(processStartTime).Round(time.Second)
 
-	// Write run manifest
-	if !config.DisableManifests {
-		manifestDir := config.ManifestDirectory
-		if manifestDir == "" {
-			var mdErr error
-			manifestDir, mdErr = getManifestDir()
-			if mdErr != nil {
-				fmt.Printf("\nWarning: could not determine manifest directory: %v\n", mdErr)
-				manifestDir = ""
-			}
-		}
-		if manifestDir != "" {
-			m := buildManifest(processTitles, manifestEntries, processStartTime, processDuration, config.DeleteRawMKVFiles, appVersion)
-			manifestPath, wErr := writeManifest(manifestDir, processStartTime, m)
-			if wErr != nil {
-				fmt.Printf("\nWarning: could not write manifest: %v\n", wErr)
-			} else {
-				fmt.Printf("\nManifest written to: %s\n", manifestPath)
-			}
-		}
-	}
-
 	fmt.Printf("\nOperation Complete. Time Elapsed - %s\n", formatTimeElapsedString(processDuration))
 
 	totalSizeRaw, totalSizeEncoded, err := calculateTotalFileSizes(processTitles, config)
@@ -317,6 +317,44 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int, appVersion string) erro
 	savedSpace := totalSizeRaw - totalSizeEncoded
 	if savedSpace > 0 {
 		fmt.Printf("Total disk space saved via encoding - %s\n", formatSavedSpace(totalSizeRaw-totalSizeEncoded))
+	}
+
+	// Run automations before raw file deletion so scripts can access raw MKV files
+	var automationEntries []manifestAutomation
+	if len(selectedAutomations) > 0 {
+		outputData := buildRunOutputData(
+			config.HBOutputDirectory,
+			config.MKVOutputDirectory,
+			processDuration,
+			len(processTitles),
+			config.DeleteRawMKVFiles,
+			totalSizeRaw,
+			totalSizeEncoded,
+		)
+		automationEntries = RunAutomations(selectedAutomations, preRunParams, outputData)
+	}
+
+	// Write run manifest (after automations so it can record automation data)
+	if !config.DisableManifests {
+		manifestDir := config.ManifestDirectory
+		if manifestDir == "" {
+			var mdErr error
+			manifestDir, mdErr = getManifestDir()
+			if mdErr != nil {
+				fmt.Printf("Warning: could not determine manifest directory: %v\n", mdErr)
+				manifestDir = ""
+			}
+		}
+		if manifestDir != "" {
+			m := buildManifest(processTitles, manifestEntries, processStartTime, processDuration, config.DeleteRawMKVFiles, appVersion, automationEntries)
+			manifestPath, wErr := writeManifest(manifestDir, processStartTime, m)
+			if wErr != nil {
+				fmt.Printf("Warning: could not write manifest: %v\n", wErr)
+			} else {
+				fmt.Printf("Manifest written to: %s\n", manifestPath)
+			}
+			_ = manifestPath
+		}
 	}
 
 	if config.DeleteRawMKVFiles {
@@ -414,9 +452,7 @@ func Setup(hb *HandBrakeCLI) error {
 	fmt.Println("2 - Current working directory.")
 	fmt.Println()
 
-	var configLocationSelectionString string
-
-	fmt.Scanln(&configLocationSelectionString)
+	configLocationSelectionString := readLine()
 
 	fmt.Println()
 
@@ -445,10 +481,7 @@ func Setup(hb *HandBrakeCLI) error {
 		fmt.Printf("\n%s\n", config.String())
 		fmt.Printf("Accept these settings? [y/N]\n\n")
 
-		var choice string
-		fmt.Scanln(&choice)
-
-		if strings.ToLower(choice) == "y" {
+		if strings.ToLower(readLine()) == "y" {
 			break
 		}
 	}
