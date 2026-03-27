@@ -300,7 +300,7 @@ func promptForConfig(hb *HandBrakeCLI, configLocationSelection int) (*handyMKVCo
 		config.EncodeConfig.Encoder = promptForSelection("What encoder should be used by default?", encoderOptions)
 		clear()
 
-		// Make the user choose beteween providing a numeric quality and an encoder preset for quality
+		// Make the user choose between providing a numeric quality and an encoder preset for quality
 		var qualitySelection int
 
 		fmt.Printf("You can provide an encoder preset for quality or a numeric quality value. Numeric values are only recommended if you are familiar with the encoder. Please choose one of the two following options:\n\n")

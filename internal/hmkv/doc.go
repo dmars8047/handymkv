@@ -1,7 +1,7 @@
 package hmkv
 
 /*
-package hmkv provides provides the bulk of the functionality for the Handy application.
+package hmkv provides the bulk of the functionality for the Handy application.
 
 # Overview
 

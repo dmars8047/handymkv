@@ -9,7 +9,7 @@ The main package is responsible for parsing command line arguments and executing
 
 The main function is the entry point for the application. It parses command line arguments and then executes the application.
 
-## Prequisite Checking
+## Prerequisite Checking
 
 The checkForPrerequisites function is called to ensure that the application has all the prerequisites applications installed it needs to run.
 
@@ -26,9 +26,9 @@ If the -c flag is provided then the application will run the setup process. This
 
 If the -d flag is provided then the application will rip the disc with the specified index. If no index is provided then the application will rip disc 0.
 
-If the -q flag is provided then the application will rip the disc with the specified quality. If no quality is provided then the application will rip with the quality specificed in the config file.
+If the -q flag is provided then the application will rip the disc with the specified quality. If no quality is provided then the application will rip with the quality specified in the config file.
 
-If the -e flag is provided then the application will rip the disc with the specified encoder. If no encoder is provided then the application will rip with the encoder specificed in the config file.
+If the -e flag is provided then the application will rip the disc with the specified encoder. If no encoder is provided then the application will rip with the encoder specified in the config file.
 
 If the -v flag is provided then the application will print the version of the application and exit.
 

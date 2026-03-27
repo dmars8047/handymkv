@@ -124,7 +124,7 @@ func (mkv *MakeMKV) ripTitle(ctx context.Context, title *TitleInfo, destDir stri
 		f, openLogFileErr := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 
 		if openLogFileErr != nil {
-			return fmt.Errorf("ripping title from disc was not successful - %w - an error occured while creating log file - %w", err, openLogFileErr)
+			return fmt.Errorf("ripping title from disc was not successful - %w - an error occurred while creating log file - %w", err, openLogFileErr)
 		}
 
 		defer f.Close()
