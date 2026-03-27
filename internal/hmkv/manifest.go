@@ -28,12 +28,25 @@ type manifestDisc struct {
 	Titles   []manifestTitle `json:"titles"`
 }
 
+type manifestAutomationParam struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+type manifestAutomation struct {
+	Name     string                    `json:"name"`
+	Command  string                    `json:"command"`
+	Params   []manifestAutomationParam `json:"params,omitempty"`
+	ExitCode int                       `json:"exit_code"`
+}
+
 type manifest struct {
-	AppVersion      string         `json:"app_version"`
-	Date            time.Time      `json:"date"`
-	Duration        string         `json:"duration"`
-	RawFilesDeleted bool           `json:"raw_files_deleted"`
-	Discs           []manifestDisc `json:"discs"`
+	AppVersion      string                `json:"app_version"`
+	Date            time.Time             `json:"date"`
+	Duration        string                `json:"duration"`
+	RawFilesDeleted bool                  `json:"raw_files_deleted"`
+	Discs           []manifestDisc        `json:"discs"`
+	Automations     []manifestAutomation  `json:"automations,omitempty"`
 }
 
 // getManifestDir returns ~/.config/handymkv/manifests/ on Unix or %APPDATA%\handymkv\manifests\ on Windows.
@@ -71,7 +84,7 @@ func normalizeHHMMSS(s string) string {
 }
 
 // buildManifest groups entries by disc (preserving order from processTitles) and builds a manifest struct.
-func buildManifest(processTitles []TitleInfo, entries []EncodingParams, startTime time.Time, duration time.Duration, rawDeleted bool, appVersion string) *manifest {
+func buildManifest(processTitles []TitleInfo, entries []EncodingParams, startTime time.Time, duration time.Duration, rawDeleted bool, appVersion string, automations []manifestAutomation) *manifest {
 	// Build disc name and duration lookups from processTitles
 	discNames := make(map[int]string)
 	type discTitle struct{ discId, titleIndex int }
@@ -121,6 +134,7 @@ func buildManifest(processTitles []TitleInfo, entries []EncodingParams, startTim
 		Duration:        duration.String(),
 		RawFilesDeleted: rawDeleted,
 		Discs:           discs,
+		Automations:     automations,
 	}
 }
 
@@ -177,10 +191,9 @@ func ClearHistory() error {
 	fmt.Printf("This will permanently delete %d manifest file(s) from:\n  %s\n\n", len(files), manifestDir)
 	fmt.Printf("Are you sure? [y/N]: ")
 
-	var choice string
-	fmt.Scanln(&choice)
+	choice := readLine()
 
-	if strings.ToLower(strings.TrimSpace(choice)) != "y" {
+	if strings.ToLower(choice) != "y" {
 		fmt.Println("Aborted.")
 		return nil
 	}
@@ -291,6 +304,20 @@ func PrintHistory(index int) error {
 			fmt.Printf("    Rip Duration:   %s\n", t.RippingDuration)
 			fmt.Printf("    Raw File:       %s (%s)\n", t.RippedFile, formatSavedSpace(t.RippedFileSizeBytes))
 			fmt.Printf("    Encoded File:   %s (%s)\n", t.EncodedFile, formatSavedSpace(t.EncodedFileSizeBytes))
+		}
+	}
+
+	if len(m.Automations) > 0 {
+		fmt.Printf("\nAutomations:\n")
+		for _, a := range m.Automations {
+			outcome := "OK"
+			if a.ExitCode != 0 {
+				outcome = fmt.Sprintf("FAILED (exit code %d)", a.ExitCode)
+			}
+			fmt.Printf("  %s (%s) — %s\n", a.Name, a.Command, outcome)
+			for _, p := range a.Params {
+				fmt.Printf("    %s = %s\n", p.Name, p.Value)
+			}
 		}
 	}
 

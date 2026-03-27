@@ -12,7 +12,7 @@ MAIN_PATH=./cmd/handymkv
 
 # Version from git tag (strips leading 'v')
 VERSION=$(shell git describe --tags --always 2>/dev/null | sed 's/^v//')
-LDFLAGS=-ldflags="-X main.applicationVersion=$(VERSION)"
+LDFLAGS=-ldflags="-s -w -X main.applicationVersion=$(VERSION)"
 
 # Detect current OS and architecture
 CURRENT_OS=$(shell go env GOOS)

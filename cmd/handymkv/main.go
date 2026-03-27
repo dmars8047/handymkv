@@ -1,11 +1,14 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"runtime/debug"
 	"slices"
 	"strconv"
@@ -28,12 +31,133 @@ func getVersion() string {
 
 func main() {
 	// Handle subcommands before flag.Parse()
+	if len(os.Args) > 1 && os.Args[1] == "config" {
+		hmkv.PrintLogo()
+
+		if len(os.Args) > 2 && os.Args[2] == "edit" {
+			configPath, err := hmkv.GetConfigFilePath()
+			if err != nil {
+				if err == hmkv.ErrConfigNotFound {
+					fmt.Printf("No config file found. Run 'handymkv config setup' to create one.\n\n")
+					return
+				}
+				fmt.Printf("Error locating config file: %v\n\n", err)
+				return
+			}
+			if err := openInEditor(configPath); err != nil {
+				if errors.Is(err, exec.ErrNotFound) {
+					fmt.Printf("No editor found. Set the EDITOR or VISUAL environment variable to specify your preferred editor.\nExample: export EDITOR=nano\n\n")
+				} else {
+					fmt.Printf("Could not open editor: %v\n\n", err)
+				}
+			}
+			return
+		}
+
+		if len(os.Args) > 2 && os.Args[2] == "setup" {
+			_, hb, err := checkForPrerequisites()
+			if err != nil {
+				outputFailedPrerequisiteCheck(err)
+				fmt.Print("Please run the configuration wizard again after addressing prerequisite dependency issues.\n\n")
+				fmt.Printf("Exiting.\n\n")
+				return
+			}
+			if err := hmkv.Setup(hb); err != nil {
+				fmt.Printf("An error occurred during the setup process.\nError: %v\n", err)
+			}
+			return
+		}
+
+		// Default: show current config
+		config, err := hmkv.ReadConfig()
+		if err != nil {
+			if err == hmkv.ErrConfigNotFound {
+				fmt.Printf("Config file not found. Please run 'handymkv config setup' to create one.\n\n")
+				return
+			}
+			fmt.Printf("An error occurred while reading the configuration file.\n\nError: %v\n", err)
+			return
+		}
+		fmt.Printf("Configuration file found.\n\n%s\n", config)
+		return
+	}
+
+	if len(os.Args) > 1 && os.Args[1] == "discs" {
+		hmkv.PrintLogo()
+
+		mkv, _, err := checkForPrerequisites()
+		if err != nil {
+			outputFailedPrerequisiteCheck(err)
+			fmt.Print("Exiting.\n\n")
+			return
+		}
+
+		fmt.Printf("Detecting available discs...\n\n")
+
+		discs, err := mkv.ListDiscs()
+		if err != nil {
+			fmt.Printf("An error occurred while listing the discs.\n\nError: %v\n", err)
+			return
+		}
+
+		if len(discs) < 1 {
+			fmt.Printf("No discs found.\n\n")
+			return
+		}
+
+		fmt.Printf("Available discs:\n\n")
+		for _, disc := range discs {
+			fmt.Printf("Disc - %d - %s\n", disc.Index, disc.Name)
+		}
+		fmt.Printf("\n")
+		return
+	}
+
+	if len(os.Args) > 1 && os.Args[1] == "automations" {
+		hmkv.PrintLogo()
+
+		if len(os.Args) > 2 {
+			switch os.Args[2] {
+			case "create":
+				if err := hmkv.CreateAutomation(); err != nil {
+					fmt.Printf("An error occurred creating automation: %v\n\n", err)
+				}
+				return
+			case "show":
+				if len(os.Args) < 4 {
+					fmt.Println("Usage: handymkv automations show <name>")
+					fmt.Println()
+					return
+				}
+				if err := hmkv.PrintAutomation(os.Args[3]); err != nil {
+					fmt.Printf("An error occurred: %v\n\n", err)
+				}
+				return
+			case "delete":
+				if len(os.Args) < 4 {
+					fmt.Println("Usage: handymkv automations delete <name>")
+					fmt.Println()
+					return
+				}
+				if err := hmkv.DeleteAutomation(os.Args[3]); err != nil {
+					fmt.Printf("An error occurred: %v\n\n", err)
+				}
+				return
+			}
+		}
+
+		if err := hmkv.PrintAutomations(); err != nil {
+			fmt.Printf("An error occurred listing automations: %v\n\n", err)
+		}
+		return
+	}
+
 	if len(os.Args) > 1 && os.Args[1] == "history" {
 		hmkv.PrintLogo()
 
 		cfg, cfgErr := hmkv.ReadConfig()
 		if cfgErr == hmkv.ErrConfigNotFound {
-			fmt.Println("No configuration found. Please run the configuration wizard with 'handymkv -c'.")
+			fmt.Println("No configuration found. Please run the configuration wizard with 'handymkv config setup'.")
 			fmt.Println()
 			return
 		}
@@ -66,24 +190,28 @@ func main() {
 
 	// Parse command line args
 	var discIds string
+	var automationNames string
 	var version bool
-	var readConfig bool
-	var configure bool
-	var listDiscs bool
 
 	flag.BoolVar(&version, "v", false, "Version. Prints the version of the application.")
-	flag.BoolVar(&configure, "c", false, "Configure. Runs the configuration wizard.")
-	flag.BoolVar(&readConfig, "r", false, "Read. Reads and outputs the first encountered configuration file. The current working directory is searched first, then the user-level configuration.")
-	flag.BoolVar(&listDiscs, "l", false, "List. Lists the available discs. The disc index is required to rip a disc. Drives without a valid disc inserted will not be listed.")
 	flag.StringVar(&discIds, "d", "0", "Discs. A comma delimited list of disc indexes to rip. Example: -d 0,1,2")
+	flag.StringVar(&automationNames, "a", "", "Automations. A comma delimited list of automation names to run after encoding. Example: -a move-to-plex,notify-discord")
 
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
 		flag.PrintDefaults()
 		fmt.Fprintf(flag.CommandLine.Output(), "\nSubcommands:\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "  config\n    \tShow the current configuration.\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "  config setup\n    \tRun the configuration wizard.\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "  config edit\n    \tOpen the config file in the default editor.\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "  discs\n    \tList available discs.\n")
 		fmt.Fprintf(flag.CommandLine.Output(), "  history\n    \tShow a summary list of past runs.\n")
 		fmt.Fprintf(flag.CommandLine.Output(), "  history <number>\n    \tShow details for a specific past run.\n")
 		fmt.Fprintf(flag.CommandLine.Output(), "  history clear\n    \tDelete all manifest files from the run history directory.\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "  automations\n    \tList all saved automations.\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "  automations create\n    \tCreate a new automation.\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "  automations show <name>\n    \tShow details of an automation.\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "  automations delete <name>\n    \tDelete an automation.\n")
 	}
 
 	flag.Parse()
@@ -95,68 +223,10 @@ func main() {
 		return
 	}
 
-	if configure {
-		_, hb, err := checkForPrerequisites()
-		if err != nil {
-			outputFailedPrerequisiteCheck(err)
-			fmt.Print("Please run the configuration wizard again after addressing prerequisite dependency issues.\n\n")
-			fmt.Printf("Exiting.\n\n")
-			return
-		}
-
-		err = hmkv.Setup(hb)
-		if err != nil {
-			fmt.Printf("An error occurred during the setup process.\nError: %v\n", err)
-		}
-
-		return
-	}
-
-	if readConfig {
-		config, err := hmkv.ReadConfig()
-		if err != nil {
-			if err == hmkv.ErrConfigNotFound {
-				fmt.Printf("Config file not found. Please run the configuration wizard with 'handy -c'.\n\n")
-				return
-			}
-
-			fmt.Printf("An error occurred while reading the configuration file.\n\nError: %v\n", err)
-			return
-		}
-
-		fmt.Printf("Configuration file found.\n\n%+v\n", config)
-
-		return
-	}
-
 	mkv, hb, err := checkForPrerequisites()
 	if err != nil {
 		outputFailedPrerequisiteCheck(err)
 		fmt.Print("Exiting.\n\n")
-		return
-	}
-
-	if listDiscs {
-		fmt.Printf("Detecting available discs...\n\n")
-
-		discs, err := mkv.ListDiscs()
-		if err != nil {
-			fmt.Printf("An error occurred while listing the discs.\n\nError: %v\n", err)
-			return
-		}
-
-		if len(discs) < 1 {
-			fmt.Printf("No discs found.\n\n")
-			return
-		}
-
-		fmt.Printf("Available discs:\n\n")
-
-		for _, disc := range discs {
-			fmt.Printf("Disc - %d - %s\n", disc.Index, disc.Name)
-		}
-
-		fmt.Printf("\n")
 		return
 	}
 
@@ -187,7 +257,21 @@ func main() {
 
 	slices.Sort(discIdInts)
 
-	err = hmkv.Exec(mkv, hb, discIdInts, getVersion())
+	var autoNames []string
+	if automationNames != "" {
+		seen := make(map[string]struct{})
+		for _, name := range strings.Split(automationNames, ",") {
+			name = strings.TrimSpace(name)
+			if name != "" {
+				if _, ok := seen[name]; !ok {
+					autoNames = append(autoNames, name)
+					seen[name] = struct{}{}
+				}
+			}
+		}
+	}
+
+	err = hmkv.Exec(mkv, hb, discIdInts, getVersion(), autoNames)
 	if err != nil {
 		if err == hmkv.ErrConfigNotFound {
 			fmt.Printf("Config file not found. Please run the configuration wizard with 'handymkv -c'.\n\n")
@@ -256,3 +340,29 @@ var (
 	ErrHandBrakeCLIExecNotFound = fmt.Errorf("HandBrakeCLI executable not found")
 	ErrMakeMKVExecNotFound      = fmt.Errorf("MakeMKV executable not found")
 )
+
+func openInEditor(path string) error {
+	editor := os.Getenv("VISUAL")
+	if editor == "" {
+		editor = os.Getenv("EDITOR")
+	}
+
+	var cmd *exec.Cmd
+	if editor != "" {
+		cmd = exec.Command(editor, path)
+	} else {
+		switch runtime.GOOS {
+		case "windows":
+			cmd = exec.Command("cmd", "/c", "start", "", path)
+		case "darwin":
+			cmd = exec.Command("open", "-t", path)
+		default:
+			cmd = exec.Command("xdg-open", path)
+		}
+	}
+
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}

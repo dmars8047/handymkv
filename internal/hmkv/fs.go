@@ -24,6 +24,12 @@ func getFileSize(filePath string) (int64, error) {
 }
 
 func deleteRawFiles(config *handyMKVConfig) {
+	// Check if the directory still exists (it may have been moved by an automation)
+	if _, err := os.Stat(config.MKVOutputDirectory); os.IsNotExist(err) {
+		fmt.Printf("\nRaw MKV output directory no longer exists (may have been moved by an automation). Skipping deletion.\n")
+		return
+	}
+
 	fmt.Printf("\nDeleting raw unencoded files...\n\n")
 
 	// Delete entire MKV output directory
@@ -31,6 +37,7 @@ func deleteRawFiles(config *handyMKVConfig) {
 
 	if err != nil {
 		fmt.Printf("An error occurred while deleting the MKV output directory: %v\n", err)
+		return
 	}
 
 	fmt.Printf("Raw unencoded files deleted.\n")

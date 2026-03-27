@@ -8,6 +8,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 )
 
@@ -26,12 +27,12 @@ var ErrConfigNotFound = errors.New("config file not found")
 type configFileLocation int
 
 type handyMKVConfig struct {
-	EncodeConfig        EncodingParams `json:"encoding_params"`
-	MKVOutputDirectory  string         `json:"mkv_output_directory"`
-	HBOutputDirectory   string         `json:"handbrake_output_directory"`
-	DeleteRawMKVFiles   bool           `json:"delete_raw_mkv_files"`
-	DisableManifests    bool           `json:"disable_manifests,omitempty"`
-	ManifestDirectory   string         `json:"manifest_directory,omitempty"`
+	EncodeConfig       EncodingParams `json:"encoding_params"`
+	MKVOutputDirectory string         `json:"mkv_output_directory"`
+	HBOutputDirectory  string         `json:"handbrake_output_directory"`
+	DeleteRawMKVFiles  bool           `json:"delete_raw_mkv_files"`
+	DisableManifests   bool           `json:"disable_manifests,omitempty"`
+	ManifestDirectory  string         `json:"manifest_directory,omitempty"`
 }
 
 func (config *handyMKVConfig) String() string {
@@ -96,6 +97,23 @@ func getUserConfigPath() (string, error) {
 		}
 		return filepath.Join(usr.HomeDir, ".config", "handymkv", configFileName), nil
 	}
+}
+
+// GetConfigFilePath returns the path of the active config file, using the same
+// discovery order as ReadConfig: local ./config.json first, then the user config directory.
+func GetConfigFilePath() (string, error) {
+	local := fmt.Sprintf("./%s", configFileName)
+	if _, err := os.Stat(local); err == nil {
+		return local, nil
+	}
+	userPath, err := getUserConfigPath()
+	if err != nil {
+		return "", err
+	}
+	if _, err := os.Stat(userPath); err == nil {
+		return userPath, nil
+	}
+	return "", ErrConfigNotFound
 }
 
 // Reads the config file and returns a config struct.
@@ -223,9 +241,7 @@ func createConfigFile(location configFileLocation, config *handyMKVConfig, overw
 	// Check if the config file already exists
 	if _, err := os.Stat(configPath); err == nil && !overwrite {
 		fmt.Printf("\nA config file already exists at %s. Overwrite? [y/N]\n\n", configPath)
-		var choice string
-		fmt.Scanln(&choice)
-		if strings.ToLower(choice) != "y" {
+		if strings.ToLower(readLine()) != "y" {
 			fmt.Printf("\nSkipping creation of config file. The file %s already exists.\n", configPath)
 			return nil
 		}
@@ -262,7 +278,7 @@ func promptForConfig(hb *HandBrakeCLI, configLocationSelection int) (*handyMKVCo
 	var encoderSelection int
 
 	for {
-		fmt.Scanln(&encoderSelection)
+		encoderSelection, _ = strconv.Atoi(readLine())
 
 		if encoderSelection == 1 || encoderSelection == 2 || encoderSelection == 3 {
 			break
@@ -292,7 +308,7 @@ func promptForConfig(hb *HandBrakeCLI, configLocationSelection int) (*handyMKVCo
 		fmt.Printf("2 - Numeric Quality Value\n\n")
 
 		for {
-			fmt.Scanln(&qualitySelection)
+			qualitySelection, _ = strconv.Atoi(readLine())
 
 			if qualitySelection == 1 || qualitySelection == 2 {
 				break
@@ -324,7 +340,7 @@ func promptForConfig(hb *HandBrakeCLI, configLocationSelection int) (*handyMKVCo
 			"any")
 		clear()
 
-		config.EncodeConfig.IncludeAllRelevantAudio = promptForBool("Include all relevant audio tracks in encoded output files? [y/N]",
+		config.EncodeConfig.IncludeAllRelevantAudio = promptForBool("Include all relevant audio tracks in encoded output files?",
 			"Some discs contain multiple audio tracks in the same language. If this option is enabled, all audio tracks in the same language will be included in the encoded output files. If this option is disabled, only the first audio track in the specified language will be included.",
 			true)
 		clear()
@@ -334,7 +350,7 @@ func promptForConfig(hb *HandBrakeCLI, configLocationSelection int) (*handyMKVCo
 			"eng")
 		clear()
 
-		config.EncodeConfig.IncludeAllRelevantSubtitles = promptForBool("Include all relevant subtitle tracks in encoded output files? [y/N]",
+		config.EncodeConfig.IncludeAllRelevantSubtitles = promptForBool("Include all relevant subtitle tracks in encoded output files?",
 			"Some discs contain multiple subtitle tracks in the same language. If this option is enabled, all subtitle tracks in the same language will be included in the encoded output files.",
 			true)
 		clear()
@@ -424,14 +440,14 @@ func promptForConfig(hb *HandBrakeCLI, configLocationSelection int) (*handyMKVCo
 
 	clear()
 
-	config.DeleteRawMKVFiles = promptForBool("Automatically delete raw unencoded files after ripping/encoding operations? [y/N]",
+	config.DeleteRawMKVFiles = promptForBool("Automatically delete raw unencoded files after ripping/encoding operations?",
 		"If enabled, raw unencoded mkv files will be deleted after the ripping/encoding operation completes. If disabled, raw unencoded files will be retained. Leaving this option enabled is recommended as it will save space on the disk.",
 		true)
 
 	clear()
 
 	config.DisableManifests = promptForBool(
-		"Disable run history logging? [y/N]",
+		"Disable run history logging?",
 		"If disabled, handymkv will not write manifest files after each run. Run history will not be available.",
 		false,
 	)

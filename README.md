@@ -22,6 +22,7 @@ As I developed HandyMKV, I found that I was able to add features that I found us
 - Summary of space saved and time elapsed
 - Automated cleanup of raw unencoded files
 - Run history — browse and inspect past ripping/encoding sessions
+- Automations — run custom scripts after encoding with parameters sourced from run data, environment variables, or user prompts
 - Parsing of `HandBrakeCLI` and `makemkvcon` output to provide a more user-friendly experience
 
 ## Objectives
@@ -78,17 +79,25 @@ HandyMKV has a number of command line options and subcommands that can be used t
 
 ```shell
 Usage of handymkv:
-  -c    Configure. Runs the configuration wizard.
+  -a string
+        Automations. A comma delimited list of automation names to run after encoding.
+        Example: -a move-to-plex,notify-discord
   -d string
         Discs. A comma delimited list of disc indexes to rip. Example: -d 0,1,2 (default "0")
-  -l    List. Lists the available discs. The disc index is required to rip a disc. Drives without a valid disc inserted will not be listed.
-  -r    Read. Reads and outputs the first encountered configuration file. The current working directory is searched first, then the user-level configuration.
   -v    Version. Prints the version of the application.
 
 Subcommands:
-  history             Show a summary list of past runs.
-  history <number>    Show details for a specific past run.
-  history clear       Delete all manifest files from the run history directory.
+  config                Show the current configuration.
+  config setup          Run the configuration wizard.
+  config edit           Open the config file in the default editor.
+  discs                 List available discs.
+  history               Show a summary list of past runs.
+  history <number>      Show details for a specific past run.
+  history clear         Delete all manifest files from the run history directory.
+  automations           List all saved automations.
+  automations create    Create a new automation.
+  automations show <name>   Show details of an automation.
+  automations delete <name> Delete an automation.
 ```
 
 ## Installation
@@ -189,7 +198,7 @@ GOOS=linux GOARCH=amd64 go build -o bin/linux-amd64/handymkv ./cmd/handymkv
 The first step is to create a configuration file. This can be done by running the following command:
 
 ```shell
-handymkv -c
+handymkv config setup
 ```
 
 This will start the configuration wizard. It will prompt you for encode settings and various operational settings. Once saved, the configuration will be stored in a file called `config.json`. The location of that file depends on whether user-wide or directory-wide configuration is used.
@@ -240,11 +249,97 @@ By default, manifest files are stored alongside the main configuration:
 - Unix: `~/.config/handymkv/manifests/`
 - Windows: `%APPDATA%\handymkv\manifests\`
 
-A custom directory can be set during the configuration wizard (`handymkv -c`), or by setting `manifest_directory` in `config.json`.
+A custom directory can be set during the configuration wizard (`handymkv config setup`), or by setting `manifest_directory` in `config.json`.
 
 ### Disabling Run History
 
 Run history can be disabled entirely via the configuration wizard or by setting `"disable_manifests": true` in `config.json`. When disabled, `handymkv history` and `handymkv history clear` will display an informational message rather than attempting to read or modify manifest files.
+
+## Automations
+
+Automations let you run local scripts or commands after HandyMKV finishes encoding. Each automation is a standalone configuration that defines a command to run and the parameters it needs. Parameters can be sourced from different places: prompted at runtime, hardcoded static defaults, or populated automatically from HandyMKV run data.
+
+Scripts receive their parameters as environment variables with the prefix `HMKV_PARAM_`. For example, a parameter named `destination_dir` becomes `HMKV_PARAM_DESTINATION_DIR`. Environment variables were chosen over command line arguments to maximize compatibility across programming languages and operating systems — argument parsing conventions vary widely between shells and runtimes (flag prefixes, quoting rules, whitespace handling), whereas environment variables are read the same way everywhere.
+
+### Managing Automations
+
+```shell
+handymkv automations              # List all saved automations
+handymkv automations create       # Create a new automation (interactive wizard)
+handymkv automations show <name>  # Show details of an automation
+handymkv automations delete <name># Delete an automation
+```
+
+Automation files are stored as JSON in:
+- Unix: `~/.config/handymkv/automations/`
+- Windows: `%APPDATA%\handymkv\automations\`
+
+> **Unix note:** Scripts must be executable before HandyMKV can run them. Make sure to run `chmod +x /path/to/your/script.sh` after creating the script.
+
+### Running Automations
+
+Use the `-a` flag to specify automations by name: `handymkv -a move-to-plex,notify-discord`
+
+Automations run after encoding completes. If the same name is provided more than once, it will only run once.
+
+### Parameter Sources
+
+When creating an automation, each parameter has a **source** that determines how its value is obtained:
+
+| Source | Description |
+|--------|-------------|
+| `prompt` | Asks the user for a value before the run starts (supports an optional default) |
+| `static` | Uses a hardcoded value — never prompts the user |
+| `hmkv_output` | Populated automatically from HandyMKV run data after encoding completes |
+
+Scripts inherit the full OS environment, so they can read environment variables (like API keys or webhook URLs) directly without needing a dedicated parameter.
+
+### `hmkv_output` Keys
+
+| Key | Value |
+|-----|-------|
+| `hb_output_dir` | Absolute path to the HandBrake output directory for this run |
+| `mkv_output_dir` | Absolute path to the raw MKV output directory for this run |
+| `run_duration` | Duration string, e.g. `12m34s` |
+| `title_count` | Number of titles processed (integer string) |
+| `raw_files_deleted` | `"true"` or `"false"` |
+| `total_raw_size` | Total size of raw MKV files in bytes (integer string) |
+| `total_encoded_size` | Total size of encoded output files in bytes (integer string) |
+
+> **Note:** Automations run *before* raw MKV files are deleted. If your script needs to act on the raw files (e.g. inspect or move them), it will have access to them via `mkv_output_dir`.
+
+### Example: Move Encoded Files to a Media Directory
+
+Create an automation using the included example script:
+
+```shell
+handymkv automations create
+```
+
+Configure it with:
+- **Name**: `move-media`
+- **Command**: `/path/to/examples/automations/move-media.sh`
+- **Param 1**: `encoded_dir` (source: `hmkv_output`, key: `hb_output_dir`)
+- **Param 2**: `media_dir` (source: `prompt`)
+- **Param 3**: `group_name` (source: `static`, value: `media` or your group name)
+
+The script strips the trailing `_t##` identifier MakeMKV appends to filenames (e.g. `My_Movie_t00.mkv` → `My_Movie.mkv`), sets group ownership and permissions, then moves files to the destination directory.
+
+### Error Handling
+
+If an automation script fails (non-zero exit code), HandyMKV prints a warning and continues with the next automation. Script failures never abort the pipeline.
+
+```
+Running automations...
+  move-to-plex: OK
+  notify-discord: FAILED (exit code 1)
+```
+
+Exit codes are recorded in the run manifest and are visible when inspecting history with `handymkv history <number>`.
+
+### Example Scripts
+
+An example automation script is available in the repository under [`examples/automations/`](examples/automations/). It demonstrates all three parameter source types: `hmkv_output` (encoded output directory), `prompt` (destination media directory), and `static` (group name).
 
 ## Multi-Disc Support
 
@@ -254,7 +349,7 @@ During such multi-disc runs the output files will be sorted into subdirectories 
 
 To rip and encode multiple discs, simply provide a comma delimited list of disc indexes to the `-d` flag. Example: `handymkv -d 0,1,2`.
 
-To see a list of available discs, use the `-l` flag. Example: `handymkv -l`.
+To see a list of available discs, use the `discs` subcommand. Example: `handymkv discs`.
 
 ## A Note on Concurrency
 
