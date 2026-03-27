@@ -70,8 +70,8 @@ func GetMakeMKVExecutable() (string, error) {
 
 		_, err := os.Stat(winExecutable)
 
-		// make sure that the file exists
-		if os.IsNotExist(err) || err != nil {
+		// make sure that the file exists and is accessible
+		if err != nil {
 			return "", fmt.Errorf("makemkvcon executable not found at %s", winExecutable)
 		}
 
