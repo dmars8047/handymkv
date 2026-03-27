@@ -259,7 +259,7 @@ Run history can be disabled entirely via the configuration wizard or by setting 
 
 Automations let you run local scripts or commands after HandyMKV finishes encoding. Each automation is a standalone configuration that defines a command to run and the parameters it needs. Parameters can be sourced from different places: prompted at runtime, hardcoded static defaults, or populated automatically from HandyMKV run data.
 
-Scripts receive their parameters as environment variables with the prefix `HMKV_PARAM_`. For example, a parameter named `destination_dir` becomes `HMKV_PARAM_DESTINATION_DIR`.
+Scripts receive their parameters as environment variables with the prefix `HMKV_PARAM_`. For example, a parameter named `destination_dir` becomes `HMKV_PARAM_DESTINATION_DIR`. Environment variables were chosen over command line arguments to maximize compatibility across programming languages and operating systems — argument parsing conventions vary widely between shells and runtimes (flag prefixes, quoting rules, whitespace handling), whereas environment variables are read the same way everywhere.
 
 ### Managing Automations
 
