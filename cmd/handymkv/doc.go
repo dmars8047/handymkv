@@ -5,31 +5,29 @@ Package main is the entry point for the HandyMKV application.
 
 # Overview
 
-The main package is responsible for parsing command line arguments and executing the application.
+The main package is responsible for parsing command line arguments and prerequisite checking (makemkvcon and HandBrakeCLI binaries), then delegating to Setup() or Exec() in the hmkv package.
 
-The main function is the entry point for the application. It parses command line arguments and then executes the application.
+## Command Line Flags
 
-## Prequisite Checking
+  -v         Print the application version and exit.
+  -d string  Comma-delimited list of disc indexes to rip. (default "0")
+  -a string  Comma-delimited list of automation names to run after encoding.
 
-The checkForPrerequisites function is called to ensure that the application has all the prerequisites applications installed it needs to run.
+## Subcommands
 
-The following applications are checked for:
+  config              Display the current configuration file.
+  config setup        Run the configuration wizard to create/update config.json.
+  config edit         Open the config file in the default editor (EDITOR or VISUAL env var).
+  discs               List available discs.
+  history             Show a summary list of past runs.
+  history <number>    Show details for a specific past run by manifest index.
+  history clear       Delete all manifest files from the run history directory.
+  automations         List all saved automations.
+  automations create  Create a new automation.
+  automations show    Show details of a specific automation.
+  automations delete  Delete an automation.
 
-- makemkvcon
-- HandBrakeCLI
+## Prerequisite Checking
 
-If any of these applications are not found in the $PATH then an error is returned and the application exits. Execution of ripping and encoding will not start without these applications.
-
-## Command Line Arguments
-
-If the -c flag is provided then the application will run the setup process. This process will create the configuration files needed for the application to run.
-
-If the -d flag is provided then the application will rip the disc with the specified index. If no index is provided then the application will rip disc 0.
-
-If the -q flag is provided then the application will rip the disc with the specified quality. If no quality is provided then the application will rip with the quality specificed in the config file.
-
-If the -e flag is provided then the application will rip the disc with the specified encoder. If no encoder is provided then the application will rip with the encoder specificed in the config file.
-
-If the -v flag is provided then the application will print the version of the application and exit.
-
+The checkForPrerequisites function verifies that makemkvcon (MakeMKV) and HandBrakeCLI (HandBrake) binaries are available. If either is missing, an error is returned and the application exits without starting the ripping or encoding pipeline.
 */
