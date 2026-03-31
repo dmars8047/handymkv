@@ -45,14 +45,14 @@ func NewDiscError(discId int, msg string) error {
 var ErrTitlesDiscRead = errors.New("cannot read titles from disc")
 
 type ExternalProcessError struct {
-	Err          error
-	ProcessOuput string
+	Err           error
+	ProcessOutput string
 }
 
 func NewExternalProcessError(err error, output string) *ExternalProcessError {
 	return &ExternalProcessError{
-		Err:          err,
-		ProcessOuput: output,
+		Err:           err,
+		ProcessOutput: output,
 	}
 }
 

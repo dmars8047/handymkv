@@ -286,8 +286,8 @@ func main() {
 		// If the error is an ExternalProcessError, print the process output
 		expErr, isExternalProcessErr := err.(*hmkv.ExternalProcessError)
 
-		if isExternalProcessErr && expErr.ProcessOuput != "" {
-			fmt.Print(expErr.ProcessOuput)
+		if isExternalProcessErr && expErr.ProcessOutput != "" {
+			fmt.Print(expErr.ProcessOutput)
 		}
 	}
 }
