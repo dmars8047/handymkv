@@ -213,23 +213,21 @@ func ClearHistory() error {
 	return nil
 }
 
-// PrintHistory prints a summary list (index == -1) or detail view (index > 0) of past runs.
-func PrintHistory(index int) error {
+// listManifestFiles returns manifest file paths sorted newest-first.
+func listManifestFiles() ([]string, error) {
 	dir, err := resolveManifestDir()
 	if err != nil {
-		return fmt.Errorf("could not determine manifest directory: %w", err)
+		return nil, fmt.Errorf("could not determine manifest directory: %w", err)
 	}
 
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			fmt.Println("No run history found.")
-			return nil
+			return nil, nil
 		}
-		return fmt.Errorf("could not read manifest directory: %w", err)
+		return nil, fmt.Errorf("could not read manifest directory: %w", err)
 	}
 
-	// Filter to manifest JSON files and sort newest-first
 	var files []string
 	for _, e := range entries {
 		if !e.IsDir() && strings.HasPrefix(e.Name(), "manifest_") && strings.HasSuffix(e.Name(), ".json") {
@@ -237,13 +235,23 @@ func PrintHistory(index int) error {
 		}
 	}
 
+	// Sort newest-first (filenames are timestamped, so lexicographic descending works)
+	sort.Sort(sort.Reverse(sort.StringSlice(files)))
+
+	return files, nil
+}
+
+// PrintHistory prints a summary list (index == -1) or detail view (index > 0) of past runs.
+func PrintHistory(index int) error {
+	files, err := listManifestFiles()
+	if err != nil {
+		return err
+	}
+
 	if len(files) == 0 {
 		fmt.Println("No run history found.")
 		return nil
 	}
-
-	// Sort newest-first (filenames are timestamped, so lexicographic descending works)
-	sort.Sort(sort.Reverse(sort.StringSlice(files)))
 
 	if index == -1 {
 		// Summary list
