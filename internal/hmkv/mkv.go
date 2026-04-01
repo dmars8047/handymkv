@@ -53,13 +53,16 @@ func GetMakeMKVExecutable() (string, error) {
 		info, err := os.Stat(macExecutable)
 
 		// make sure that the file exists
-		if os.IsNotExist(err) {
-			return "", fmt.Errorf("makemkvcon executable not found at %s", macExecutable)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return "", fmt.Errorf("makemkvcon executable not found at %s", macExecutable)
+			}
+			return "", fmt.Errorf("error checking makemkvcon executable at %s: %w", macExecutable, err)
 		}
 
 		// make sure that the current user has permission to execute the file
 		if info.Mode()&0111 == 0 {
-			return "", fmt.Errorf("makemkvcon executable was found at %s is not executable", macExecutable)
+			return "", fmt.Errorf("makemkvcon was found at %s but is not executable", macExecutable)
 		}
 
 		return macExecutable, nil
@@ -71,8 +74,8 @@ func GetMakeMKVExecutable() (string, error) {
 		_, err := os.Stat(winExecutable)
 
 		// make sure that the file exists
-		if os.IsNotExist(err) || err != nil {
-			return "", fmt.Errorf("makemkvcon executable not found at %s", winExecutable)
+		if err != nil {
+			return "", fmt.Errorf("makemkvcon executable not accessible at %s: %w", winExecutable, err)
 		}
 
 		return winExecutable, nil
