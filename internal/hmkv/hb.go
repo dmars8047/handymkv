@@ -88,9 +88,8 @@ type HandBrakePreset struct {
 	FileFormat string `json:"FileFormat"`
 }
 
-func (hb *HandBrakeCLI) encode(ctx context.Context,
-	params *EncodingParams,
-	onProgress func(percent int)) error {
+// Builds the full HandBrakeCLI argument list for an encode.
+func buildEncodeArgs(params *EncodingParams) []string {
 	var args []string = []string{
 		"--input", params.MKVOutputPath,
 		"--output", params.HandBrakeOutputPath,
@@ -127,6 +126,14 @@ func (hb *HandBrakeCLI) encode(ctx context.Context,
 			}
 		}
 	}
+
+	return args
+}
+
+func (hb *HandBrakeCLI) encode(ctx context.Context,
+	params *EncodingParams,
+	onProgress func(percent int)) error {
+	args := buildEncodeArgs(params)
 
 	cmd := exec.CommandContext(ctx, hb.executable,
 		args...,
