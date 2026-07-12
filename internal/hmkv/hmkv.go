@@ -425,23 +425,31 @@ func ripTitles(
 
 		hbOutputDir := filepath.Join(config.HBOutputDirectory, title.Subdirectory())
 
-		encChannel <- EncodingParams{
-			TitleIndex:          title.Index,
-			DiscId:              title.DiscId,
-			MKVOutputPath:       mkvOutputPath,
-			HandBrakeOutputPath: filepath.Join(hbOutputDir, encodingOutputFileName),
-			RippedFileSizeBytes: rippedSizeBytes,
-			RippingDuration:     ripDuration.String(),
-			Quality:             config.EncodeConfig.Quality,
-			Encoder:             config.EncodeConfig.Encoder,
-			EncoderPreset:       config.EncodeConfig.EncoderPreset,
-			OutputFileFormat:    config.EncodeConfig.OutputFileFormat,
-			Preset:              config.EncodeConfig.Preset,
-			PresetFile:          config.EncodeConfig.PresetFile,
-			SubtitleLanguages:   config.EncodeConfig.SubtitleLanguages,
-			AudioLanguages:      config.EncodeConfig.AudioLanguages,
-		}
+		encChannel <- newEncodingParams(config, &title, mkvOutputPath,
+			filepath.Join(hbOutputDir, encodingOutputFileName), rippedSizeBytes, ripDuration)
 	}
+}
+
+// Builds the parameters for a single title's encode. The configured encode
+// settings are carried over wholesale, so a setting added to EncodingParams is
+// passed to HandBrake without needing to be listed here as well. Only the
+// per-title fields, which have no configured counterpart, are filled in.
+func newEncodingParams(config *handyMKVConfig,
+	title *TitleInfo,
+	mkvOutputPath string,
+	handBrakeOutputPath string,
+	rippedSizeBytes int64,
+	ripDuration time.Duration) EncodingParams {
+	params := config.EncodeConfig
+
+	params.TitleIndex = title.Index
+	params.DiscId = title.DiscId
+	params.MKVOutputPath = mkvOutputPath
+	params.HandBrakeOutputPath = handBrakeOutputPath
+	params.RippedFileSizeBytes = rippedSizeBytes
+	params.RippingDuration = ripDuration.String()
+
+	return params
 }
 
 // Prompts the user to create a configuration file.
