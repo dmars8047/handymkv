@@ -222,6 +222,33 @@ All output files will be stored in the directory specified in the configuration 
 
 Note: If there is a `config.json` file in the working directory at execution time, that file will be used instead of the user-wide configuration file.
 
+## Extra HandBrake Arguments
+
+Some things cannot be expressed in a HandBrake preset. A preset can only select audio tracks by language and by "first" or "all", so it cannot pick individual tracks by index, and it applies a single audio rule to every track it selects. A disc that carries several tracks in the same language therefore cannot be handled by a preset alone.
+
+The optional `extra_handbrake_args` setting appends arbitrary arguments to the HandBrakeCLI invocation. It is not written by the configuration wizard and must be added to `config.json` by hand:
+
+```json
+{
+  "encoding_params": {
+    "preset_file": "/path/to/preset.json",
+    "handbrake_preset": "MyPreset",
+    "extra_handbrake_args": [
+      "-a", "1,2",
+      "-E", "ca_aac,ca_aac",
+      "-B", "160,640",
+      "--mixdown", "mono,5point1"
+    ]
+  }
+}
+```
+
+The arguments are appended after the preset. HandBrakeCLI applies an imported preset first and lets later flags override it, so the preset can continue to govern video while these arguments take over audio track selection. The example above encodes only source tracks 1 and 2, the first as mono and the second as 5.1, ignoring any further tracks the disc may carry.
+
+Arguments that HandyMKV derives itself are rejected, because supplying them would redirect an encode away from the staged input or the configured output directory. These are `--input`, `-i`, `--output`, `-o`, `--preset` and `--preset-import-file`.
+
+Track indexes refer to the ripped MKV, not to the disc. They are only stable while every title shares the same stream layout, so verify the layout before relying on index based selection across a whole series.
+
 ## Run History
 
 After each run, HandyMKV writes a manifest file recording what was ripped and encoded, file sizes, durations, and whether raw MKV files were deleted. These manifests can be browsed at any time with the `history` subcommand.

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -77,6 +78,7 @@ type EncodingParams struct {
 	OutputFileFormat            string   `json:"output_file_format,omitempty"`
 	Preset                      string   `json:"handbrake_preset,omitempty"`
 	PresetFile                  string   `json:"preset_file,omitempty"`
+	ExtraHandBrakeArgs          []string `json:"extra_handbrake_args,omitempty"`
 }
 
 type HandBrakePresetFile struct {
@@ -86,6 +88,37 @@ type HandBrakePresetFile struct {
 type HandBrakePreset struct {
 	PresetName string `json:"PresetName"`
 	FileFormat string `json:"FileFormat"`
+}
+
+// HandBrakeCLI flags that handymkv derives from the configuration and the disc
+// being processed. Supplying them as extra arguments would silently redirect an
+// encode away from the staged input or the configured output directory, so they
+// are rejected rather than merged.
+var reservedHandBrakeArgs []string = []string{
+	"--input",
+	"-i",
+	"--output",
+	"-o",
+	"--preset",
+	"--preset-import-file",
+}
+
+var ErrReservedHandBrakeArg = errors.New("reserved HandBrakeCLI argument")
+
+// Checks that extra HandBrakeCLI arguments do not collide with the ones handymkv
+// owns. Both the bare flag and its inline "--flag=value" form are rejected.
+func validateExtraHandBrakeArgs(args []string) error {
+	for _, arg := range args {
+		flag, _, _ := strings.Cut(arg, "=")
+
+		for _, reserved := range reservedHandBrakeArgs {
+			if flag == reserved {
+				return fmt.Errorf("%w - %s is set by handymkv and cannot be overridden", ErrReservedHandBrakeArg, reserved)
+			}
+		}
+	}
+
+	return nil
 }
 
 // Builds the full HandBrakeCLI argument list for an encode.
@@ -126,6 +159,12 @@ func buildEncodeArgs(params *EncodingParams) []string {
 			}
 		}
 	}
+
+	// Extra arguments are appended last. HandBrakeCLI applies an imported preset
+	// first and lets later flags override it, so this is what allows a preset to
+	// govern video while the arguments below take over track selection, encoders
+	// or anything else the preset format cannot express.
+	args = append(args, params.ExtraHandBrakeArgs...)
 
 	return args
 }
