@@ -70,6 +70,10 @@ func (config *handyMKVConfig) String() string {
 		}
 	}
 
+	if len(config.EncodeConfig.ExtraHandBrakeArgs) > 0 {
+		sb.WriteString(fmt.Sprintf("Extra HandBrake Arguments: %s\n", strings.Join(config.EncodeConfig.ExtraHandBrakeArgs, " ")))
+	}
+
 	sb.WriteString("\n")
 	sb.WriteString("General Settings\n\n")
 	fmt.Fprintf(&sb, "MKV Output Directory: %s\n", config.MKVOutputDirectory)
@@ -151,6 +155,10 @@ func readConfigFile(filePath string) (*handyMKVConfig, error) {
 
 	if err != nil {
 		return nil, fmt.Errorf("error parsing config file - %w", err)
+	}
+
+	if err := validateExtraHandBrakeArgs(cfg.EncodeConfig.ExtraHandBrakeArgs); err != nil {
+		return nil, fmt.Errorf("error validating config file - %w", err)
 	}
 
 	if cfg.EncodeConfig.PresetFile != "" {
