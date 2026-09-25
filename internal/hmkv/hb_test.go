@@ -1,10 +1,81 @@
 package hmkv
 
 import (
+	"context"
 	"errors"
+	"os"
+	"path/filepath"
+	"runtime"
 	"slices"
 	"testing"
 )
+
+// Writes a shell script standing in for HandBrakeCLI and returns its path.
+func writeFakeHandBrakeCLI(t *testing.T, script string) string {
+	t.Helper()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("the fake HandBrakeCLI is a shell script")
+	}
+
+	path := filepath.Join(t.TempDir(), "HandBrakeCLI")
+
+	if err := os.WriteFile(path, []byte("#!/bin/sh\n"+script+"\n"), 0o755); err != nil {
+		t.Fatalf("writing fake HandBrakeCLI: %v", err)
+	}
+
+	return path
+}
+
+func TestEncode(t *testing.T) {
+	tests := []struct {
+		name      string
+		script    string
+		expectErr bool
+	}{
+		{
+			// buildEncodeArgs puts the output path fourth: --input <in> --output <out>.
+			name:      "an encode that writes its output succeeds",
+			script:    `touch "$4"`,
+			expectErr: false,
+		},
+		{
+			// Options such as --preset-list or --help make HandBrakeCLI exit 0
+			// without encoding anything.
+			name:      "an encode that exits cleanly without writing its output fails",
+			script:    `exit 0`,
+			expectErr: true,
+		},
+		{
+			name:      "an encode that exits with an error fails",
+			script:    `exit 1`,
+			expectErr: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			hb := NewHandBrakeCLI(writeFakeHandBrakeCLI(t, test.script))
+			dir := t.TempDir()
+
+			params := EncodingParams{
+				MKVOutputPath:       filepath.Join(dir, "in.mkv"),
+				HandBrakeOutputPath: filepath.Join(dir, "out.mkv"),
+				Preset:              "MyPreset",
+			}
+
+			err := hb.encode(context.Background(), &params, func(int) {})
+
+			if test.expectErr && err == nil {
+				t.Errorf("expected an error, got nil")
+			}
+
+			if !test.expectErr && err != nil {
+				t.Errorf("expected no error, got %v", err)
+			}
+		})
+	}
+}
 
 func TestBuildEncodeArgs(t *testing.T) {
 	tests := []struct {

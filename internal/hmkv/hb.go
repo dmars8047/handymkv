@@ -282,6 +282,16 @@ func (hb *HandBrakeCLI) encode(ctx context.Context,
 		)
 	}
 
+	// Some options, such as --preset-list or --help, make HandBrakeCLI exit
+	// successfully without encoding anything. Treating that as success would let
+	// the run go on to delete the raw files that were never encoded.
+	if _, err := os.Stat(params.HandBrakeOutputPath); err != nil {
+		return NewExternalProcessError(
+			fmt.Errorf("HandBrakeCLI exited without writing %s: %w", params.HandBrakeOutputPath, err),
+			fmt.Sprintf("HandBrakeCLI Error Output:\n%s", stderrBuf.String()),
+		)
+	}
+
 	return nil
 }
 
