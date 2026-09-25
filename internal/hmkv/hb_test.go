@@ -215,6 +215,100 @@ func TestValidateExtraHandBrakeArgs(t *testing.T) {
 			args:      []string{"--output=/tmp/elsewhere.mkv"},
 			expectErr: true,
 		},
+		{
+			name:      "-Z is reserved as the short form of --preset",
+			args:      []string{"-Z", "Fast 1080p30"},
+			expectErr: true,
+		},
+		{
+			name:      "-o with an attached value is reserved",
+			args:      []string{"-o/tmp/elsewhere.mkv"},
+			expectErr: true,
+		},
+		{
+			name:      "-i with an attached value is reserved",
+			args:      []string{"-i/tmp/other.mkv"},
+			expectErr: true,
+		},
+		{
+			name:      "-Z with an attached value is reserved",
+			args:      []string{"-ZOther"},
+			expectErr: true,
+		},
+		{
+			// getopt reads -O as a flag without a value and continues with the
+			// rest of the token, so this is -O followed by -o /tmp/elsewhere.mkv.
+			name:      "-o clustered behind a flag without a value is reserved",
+			args:      []string{"-Oo/tmp/elsewhere.mkv"},
+			expectErr: true,
+		},
+		{
+			name:      "-o clustered behind -g is reserved",
+			args:      []string{"-go/tmp/elsewhere.mkv"},
+			expectErr: true,
+		},
+		{
+			// HandBrakeCLI accepts any unambiguous prefix of a long option.
+			name:      "an abbreviated --input is reserved",
+			args:      []string{"--inp", "/tmp/other.mkv"},
+			expectErr: true,
+		},
+		{
+			name:      "an abbreviated --output in inline form is reserved",
+			args:      []string{"--outp=/tmp/elsewhere.mkv"},
+			expectErr: true,
+		},
+		{
+			name:      "--queue-import-file is reserved",
+			args:      []string{"--queue-import-file", "queue.json"},
+			expectErr: true,
+		},
+		{
+			name:      "--preset-import-gui is reserved",
+			args:      []string{"--preset-import-gui"},
+			expectErr: true,
+		},
+		{
+			// The file extension comes from output_file_format, so a different
+			// container would end up in a file named for another one.
+			name:      "--format is reserved",
+			args:      []string{"--format", "av_mp4"},
+			expectErr: true,
+		},
+		{
+			name:      "-f is reserved",
+			args:      []string{"-f", "av_mp4"},
+			expectErr: true,
+		},
+		{
+			name:      "an abbreviated --format is reserved",
+			args:      []string{"--form=av_mp4"},
+			expectErr: true,
+		},
+		{
+			// A short option token is rejected as soon as it contains a reserved
+			// letter anywhere, since telling an attached value apart from a
+			// cluster would need HandBrakeCLI's full option table. The fix on the
+			// user's side is to pass the value as its own token: "-E", "opus".
+			name:      "a harmless attached value containing a reserved letter is rejected",
+			args:      []string{"-Eopus"},
+			expectErr: true,
+		},
+		{
+			name:      "an attached value without reserved letters is allowed",
+			args:      []string{"-Eac3"},
+			expectErr: false,
+		},
+		{
+			name:      "a negative number as a value is allowed",
+			args:      []string{"--gain", "-10"},
+			expectErr: false,
+		},
+		{
+			name:      "long options that merely share a prefix with reserved ones are allowed",
+			args:      []string{"--previews", "10:0", "--optimize", "--inline-parameter-sets"},
+			expectErr: false,
+		},
 	}
 
 	for _, test := range tests {

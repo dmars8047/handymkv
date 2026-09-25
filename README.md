@@ -245,7 +245,7 @@ The optional `extra_handbrake_args` setting appends arbitrary arguments to the H
 
 The arguments are appended after the preset. HandBrakeCLI applies an imported preset first and lets later flags override it, so the preset can continue to govern video while these arguments take over audio track selection. The example above encodes only source tracks 1 and 2, the first as mono and the second as 5.1, ignoring any further tracks the disc may carry.
 
-Arguments that HandyMKV derives itself are rejected, because supplying them would redirect an encode away from the staged input or the configured output directory. These are `--input`, `-i`, `--output`, `-o`, `--preset` and `--preset-import-file`.
+Arguments that HandyMKV derives itself are rejected, because supplying them would redirect an encode away from the staged input or the configured output directory, or produce a container that does not match the output file extension. These are `--input`/`-i`, `--output`/`-o`, `--preset`/`-Z`, `--format`/`-f`, `--preset-import-file`, `--preset-import-gui` and `--queue-import-file`, including abbreviations such as `--outp`. Pass option values as separate entries (`"-E", "opus"` rather than `"-Eopus"`). A short option token that contains any of the letters `i`, `o`, `Z` or `f` is rejected, since HandBrakeCLI could read it as one of the reserved options.
 
 Track indexes refer to the ripped MKV, not to the disc. They are only stable while every title shares the same stream layout, so verify the layout before relying on index based selection across a whole series.
 
