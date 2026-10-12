@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -77,6 +78,7 @@ type EncodingParams struct {
 	OutputFileFormat            string   `json:"output_file_format,omitempty"`
 	Preset                      string   `json:"handbrake_preset,omitempty"`
 	PresetFile                  string   `json:"preset_file,omitempty"`
+	ExtraHandBrakeArgs          []string `json:"extra_handbrake_args,omitempty"`
 }
 
 type HandBrakePresetFile struct {
@@ -88,9 +90,73 @@ type HandBrakePreset struct {
 	FileFormat string `json:"FileFormat"`
 }
 
-func (hb *HandBrakeCLI) encode(ctx context.Context,
-	params *EncodingParams,
-	onProgress func(percent int)) error {
+// HandBrakeCLI options that decide where an encode reads from, where it writes
+// to, or which container it produces. handymkv derives all of them from the
+// configuration and the disc being processed. Supplying them as extra arguments
+// would silently redirect an encode away from the staged input or the configured
+// output directory, or write a container that does not match the file extension
+// taken from output_file_format, so they are rejected rather than merged. The
+// import options are included because a queue file carries its own input and
+// output paths, and a GUI preset file can replace the configured preset.
+var reservedHandBrakeLongArgs []string = []string{
+	"--input",
+	"--output",
+	"--preset",
+	"--preset-import-file",
+	"--preset-import-gui",
+	"--queue-import-file",
+	"--format",
+}
+
+// Short forms of the reserved long options above, without the leading dash.
+var reservedHandBrakeShortArgs string = "ioZf"
+
+var ErrReservedHandBrakeArg = errors.New("reserved HandBrakeCLI argument")
+
+// Checks that extra HandBrakeCLI arguments do not collide with the ones handymkv
+// owns. HandBrakeCLI parses its arguments with getopt_long, which accepts more
+// spellings than the plain flag, and each of them has to be caught here.
+//
+// The check does not track which tokens are flags and which are values, so a
+// value that looks like a reserved option is rejected too. No HandBrakeCLI
+// option takes such a value, and refusing loudly beats redirecting an encode.
+func validateExtraHandBrakeArgs(args []string) error {
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "--") {
+			// getopt_long resolves any unambiguous prefix of a long option to that
+			// option, so "--outp" means "--output". Prefixes shared with other
+			// options, like "--pre", are ambiguous and HandBrakeCLI refuses them
+			// anyway, so rejecting every prefix costs nothing. No HandBrakeCLI
+			// option other than the reserved ones is a prefix of a reserved one.
+			flag, _, _ := strings.Cut(arg, "=")
+
+			for _, reserved := range reservedHandBrakeLongArgs {
+				if strings.HasPrefix(reserved, flag) {
+					return fmt.Errorf("%w - %s would be read as %s, which is set by handymkv and cannot be overridden", ErrReservedHandBrakeArg, arg, reserved)
+				}
+			}
+
+			continue
+		}
+
+		if strings.HasPrefix(arg, "-") {
+			// getopt accepts a value glued to its short option ("-o/tmp/x.mkv") and
+			// several short options clustered into one token ("-Oo/tmp/x.mkv" is
+			// -O followed by -o). Telling a glued value apart from a cluster would
+			// need HandBrakeCLI's full option table, so any reserved letter in the
+			// token rejects it. A harmless glued value such as "-Eopus" is caught
+			// as well and has to be passed as two tokens instead.
+			if i := strings.IndexAny(arg[1:], reservedHandBrakeShortArgs); i >= 0 {
+				return fmt.Errorf("%w - %s may be read as -%c, which is set by handymkv and cannot be overridden (pass option values as separate arguments, e.g. \"-E\", \"opus\")", ErrReservedHandBrakeArg, arg, arg[1+i])
+			}
+		}
+	}
+
+	return nil
+}
+
+// Builds the full HandBrakeCLI argument list for an encode.
+func buildEncodeArgs(params *EncodingParams) []string {
 	var args []string = []string{
 		"--input", params.MKVOutputPath,
 		"--output", params.HandBrakeOutputPath,
@@ -127,6 +193,20 @@ func (hb *HandBrakeCLI) encode(ctx context.Context,
 			}
 		}
 	}
+
+	// Extra arguments are appended last. HandBrakeCLI applies an imported preset
+	// first and lets later flags override it, so this is what allows a preset to
+	// govern video while the arguments below take over track selection, encoders
+	// or anything else the preset format cannot express.
+	args = append(args, params.ExtraHandBrakeArgs...)
+
+	return args
+}
+
+func (hb *HandBrakeCLI) encode(ctx context.Context,
+	params *EncodingParams,
+	onProgress func(percent int)) error {
+	args := buildEncodeArgs(params)
 
 	cmd := exec.CommandContext(ctx, hb.executable,
 		args...,
@@ -199,6 +279,16 @@ func (hb *HandBrakeCLI) encode(ctx context.Context,
 		return NewExternalProcessError(
 			fmt.Errorf("encoding failed for %s: %w", params.MKVOutputPath, err),
 			fmt.Sprintf("HandBrakeCLI Error Output:\n%s", stderrOutput),
+		)
+	}
+
+	// Some options, such as --preset-list or --help, make HandBrakeCLI exit
+	// successfully without encoding anything. Treating that as success would let
+	// the run go on to delete the raw files that were never encoded.
+	if _, err := os.Stat(params.HandBrakeOutputPath); err != nil {
+		return NewExternalProcessError(
+			fmt.Errorf("HandBrakeCLI exited without writing %s: %w", params.HandBrakeOutputPath, err),
+			fmt.Sprintf("HandBrakeCLI Error Output:\n%s", stderrBuf.String()),
 		)
 	}
 
