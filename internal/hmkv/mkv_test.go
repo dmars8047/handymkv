@@ -1,6 +1,11 @@
 package hmkv
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"runtime"
+	"testing"
+)
 
 func TestGetEncodingFileName(t *testing.T) {
 	tests := []struct {
@@ -113,5 +118,46 @@ func TestSubdirectory(t *testing.T) {
 				t.Errorf("Subdirectory() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestGetTitlesFromDiscParsesSourceInfo(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses a shell script as fake makemkvcon")
+	}
+
+	script := filepath.Join(t.TempDir(), "makemkvcon")
+	output := `DRV:0,2,999,12,"BD-RE HL-DT-ST","STAR TREK TNG S4 D2","/dev/sr0"
+TINFO:0,8,0,"5"
+TINFO:0,9,0,"0:45:10"
+TINFO:0,11,0,"1000"
+TINFO:0,16,0,"00800.mpls"
+TINFO:0,24,0,"1"
+TINFO:0,26,0,"1,2"
+TINFO:0,27,0,"title_t00.mkv"
+TINFO:1,24,0,"2"
+TINFO:1,27,0,"title_t01.mkv"
+`
+	content := "#!/bin/sh\ncat <<'EOF'\n" + output + "EOF\n"
+	if err := os.WriteFile(script, []byte(content), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	titles, err := NewMakeMKV(script).getTitlesFromDisc(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(titles) != 2 {
+		t.Fatalf("got %d titles", len(titles))
+	}
+
+	if titles[0].SourceFile != "00800.mpls" || titles[0].SegmentMap != "1,2" || titles[0].DevicePath != "/dev/sr0" {
+		t.Errorf("unexpected title 0: %+v", titles[0])
+	}
+
+	// Without a source file name (DVD) the source title id is used.
+	if titles[1].SourceFile != "2" {
+		t.Errorf("unexpected title 1 source: %q", titles[1].SourceFile)
 	}
 }

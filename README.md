@@ -222,6 +222,33 @@ All output files will be stored in the directory specified in the configuration 
 
 Note: If there is a `config.json` file in the working directory at execution time, that file will be used instead of the user-wide configuration file.
 
+## TheDiscDB Title Names
+
+Before the title selection, HandyMKV looks the disc up in [TheDiscDB](https://thediscdb.com), a community database that knows which movie, episode or extra each title of a disc contains. The selection list then shows both the original MakeMKV file name and the name from TheDiscDB:
+
+```
+ID: 0, File: title_t00.mkv, Name: Star Trek: The Next Generation - S04E05 - Remember Me, Size: 5.2 GB, Length: 0:45:10
+ID: 3, File: title_t03.mkv, Name: Star Trek: The Next Generation - Making Of [Extra], Size: 1.1 GB, Length: 0:20:02
+```
+
+Titles found in TheDiscDB are saved under that name after ripping (and encoded under it as well):
+
+- Episodes: `<Series> - S01E02 - <Episode title>.mkv`
+- Main movie: `<Movie title> (<Year>).mkv`
+- Everything else: `<Movie/Series> - <Title>.mkv`
+
+Titles that TheDiscDB does not know keep the MakeMKV file name.
+
+### How the disc is identified
+
+The disc is identified by TheDiscDB's content hash, which is calculated from the sizes of the video files on the disc (`BDMV/STREAM/*.m2ts` on Blu-ray, `VIDEO_TS/*.VOB/IFO/BUP` on DVD). For this the disc has to be mounted (Linux: listed in `/proc/mounts`; Windows: accessible by its drive letter; macOS: mounted under `/Volumes`). The titles are then matched by the source playlist reported by MakeMKV (e.g. `00800.mpls`), its segment map and the title size.
+
+If the disc is not mounted or not in TheDiscDB, HandyMKV asks for a movie or series name to search TheDiscDB, and lets you pick the matching disc. Leave the search empty to continue without TheDiscDB names. A lookup failure never stops the rip.
+
+### Configuration
+
+The lookup can be turned off by setting `"disable_thediscdb": true` in `config.json`. If TheDiscDB ever requires an API key, it can be set with `"thediscdb_api_key": "<key>"`.
+
 ## Extra HandBrake Arguments
 
 Some things cannot be expressed in a HandBrake preset. A preset can only select audio tracks by language and by "first" or "all", so it cannot pick individual tracks by index, and it applies a single audio rule to every track it selects. A disc that carries several tracks in the same language therefore cannot be handled by a preset alone.

@@ -87,3 +87,34 @@ func TestFormatProgressStatus(t *testing.T) {
 		}
 	}
 }
+
+func TestWrapText(t *testing.T) {
+	tests := []struct {
+		text  string
+		width int
+		want  []string
+	}{
+		{"Short", 20, []string{"Short"}},
+		{"S01E23 - We'll Always Have Paris", 40, []string{"S01E23 - We'll Always Have Paris"}},
+		{"Star Trek - The Next Generation - S01E22 - Skin of Evil", 40,
+			[]string{"Star Trek - The Next Generation - S01E22", "- Skin of Evil"}},
+		{"abcdefghij klm", 6, []string{"abcdef", "ghij", "klm"}},
+		{"", 10, []string{""}},
+	}
+
+	for _, tt := range tests {
+		got := wrapText(tt.text, tt.width)
+		if strings.Join(got, "|") != strings.Join(tt.want, "|") {
+			t.Errorf("wrapText(%q, %d) = %q, want %q", tt.text, tt.width, got, tt.want)
+		}
+		for i, line := range got {
+			limit := tt.width
+			if i > 0 {
+				limit -= 2
+			}
+			if len([]rune(line)) > limit {
+				t.Errorf("line %q longer than %d", line, limit)
+			}
+		}
+	}
+}

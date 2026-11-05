@@ -41,6 +41,12 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int, appVersion string, auto
 
 	processTitles := make([]TitleInfo, 0)
 
+	var discDB *DiscDBClient
+
+	if !config.DisableDiscDB {
+		discDB = NewDiscDBClient(config.DiscDBAPIKey, fmt.Sprintf("handymkv/%s", appVersion))
+	}
+
 	for i, discId := range discIds {
 
 		fmt.Printf("Reading titles from disc %d...\n\n", discId)
@@ -51,10 +57,12 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int, appVersion string, auto
 			return err
 		}
 
+		identifyTitlesWithDiscDB(discDB, titles)
+
 		fmt.Printf("The following titles were read from the disc - %s\n\n", titles[0].DiscTitle)
 
 		for _, title := range titles {
-			fmt.Printf("ID: %d, Title Name: %s, Size: %s, Length: %s\n", title.Index, title.FileName, title.FileSizeDesc, title.Length)
+			fmt.Println(formatTitleLine(&title))
 		}
 
 		var titleSelections string
@@ -134,7 +142,7 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int, appVersion string, auto
 	for i, title := range processTitles {
 		tracker.statuses[i] = titleStatus{
 			TitleIndex:        title.Index,
-			Title:             title.FileName,
+			Title:             title.ProgressName(),
 			DiscId:            title.DiscId,
 			Ripping:           Pending,
 			Encoding:          Pending,
@@ -377,6 +385,7 @@ func ripTitles(
 
 	for _, title := range processTitles {
 		mkvOutputDirectory := filepath.Join(config.MKVOutputDirectory, title.Subdirectory())
+		// MakeMKV always writes the file under its own name. It is renamed after ripping.
 		mkvOutputPath := filepath.Join(mkvOutputDirectory, title.FileName)
 
 		ripStartTime := time.Now()
@@ -414,6 +423,22 @@ func ripTitles(
 		})
 		tracker.forceRefresh() // Force immediate display for completion
 
+		if title.OutputFileName() != title.FileName {
+			renamedPath := filepath.Join(mkvOutputDirectory, title.OutputFileName())
+
+			if err := os.Rename(mkvOutputPath, renamedPath); err != nil {
+				tracker.setError(fmt.Errorf("could not rename %s to %s - %w", mkvOutputPath, renamedPath, err))
+				cancelProcessing()
+				return
+			}
+
+			mkvOutputPath = renamedPath
+
+			tracker.applyChange(title.Index, title.DiscId, func(status *titleStatus) {
+				status.OutputFilePath = mkvOutputPath
+			})
+		}
+
 		ripDuration := time.Since(ripStartTime).Round(time.Second)
 		var rippedSizeBytes int64
 		if stat, err := os.Stat(mkvOutputPath); err == nil {
@@ -428,6 +453,21 @@ func ripTitles(
 		encChannel <- newEncodingParams(config, &title, mkvOutputPath,
 			filepath.Join(hbOutputDir, encodingOutputFileName), rippedSizeBytes, ripDuration)
 	}
+}
+
+// Formats one line of the title selection list.
+func formatTitleLine(title *TitleInfo) string {
+	var sb strings.Builder
+
+	fmt.Fprintf(&sb, "ID: %d, File: %s", title.Index, title.FileName)
+
+	if title.DiscDBName != "" {
+		fmt.Fprintf(&sb, ", Name: %s", title.DiscDBName)
+	}
+
+	fmt.Fprintf(&sb, ", Size: %s, Length: %s", title.FileSizeDesc, title.Length)
+
+	return sb.String()
 }
 
 // Builds the parameters for a single title's encode. The configured encode

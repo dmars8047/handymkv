@@ -20,3 +20,18 @@ jobs:
 
       - name: Test
         run: go test ./...
+
+      - name: Build binaries
+        run: make windows-amd64 linux-amd64
+
+      - name: Upload Windows binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: handymkv-windows-amd64
+          path: bin/windows-amd64/handymkv.exe
+
+      - name: Upload Linux binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: handymkv-linux-amd64
+          path: bin/linux-amd64/handymkv
