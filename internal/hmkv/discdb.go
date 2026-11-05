@@ -539,6 +539,7 @@ func ApplyDiscDBMatch(titles []TitleInfo, match DiscDBMatch) int {
 		titles[i].DiscDBName = ""
 		titles[i].DiscDBType = ""
 		titles[i].DiscDBFileName = ""
+		titles[i].DiscDBShortName = ""
 
 		dt := matchDiscDBTitle(&titles[i], match.Disc.Titles)
 		if dt == nil || dt.Item == nil || strings.TrimSpace(dt.Item.Title) == "" {
@@ -547,6 +548,7 @@ func ApplyDiscDBMatch(titles []TitleInfo, match DiscDBMatch) int {
 
 		titles[i].DiscDBName = discDBDisplayName(match, dt.Item)
 		titles[i].DiscDBType = dt.Item.Type
+		titles[i].DiscDBShortName = discDBShortName(match, dt.Item)
 
 		base := sanitizeFileName(discDBBaseName(match, dt.Item))
 		if base == "" {
@@ -589,6 +591,27 @@ func discDBDisplayName(match DiscDBMatch, item *discDBItem) string {
 		name = fmt.Sprintf("%s [%s]", name, item.Type)
 	}
 	return name
+}
+
+// discDBShortName is the name without the movie/series prefix, for the progress table.
+//
+//	Episode:    "S01E02 - <Episode title>"
+//	Main movie: "<Movie title> (<Year>)"
+//	Other:      "<Item title>"
+func discDBShortName(match DiscDBMatch, item *discDBItem) string {
+	itemTitle := strings.TrimSpace(item.Title)
+
+	switch {
+	case strings.EqualFold(item.Type, "Episode"):
+		if se := formatSeasonEpisode(item.Season, item.Episode); se != "" {
+			return se + " - " + itemTitle
+		}
+		return itemTitle
+	case strings.EqualFold(item.Type, "MainMovie"):
+		return discDBBaseName(match, item)
+	default:
+		return itemTitle
+	}
 }
 
 // discDBBaseName builds the output file name (without extension):

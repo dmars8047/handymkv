@@ -142,7 +142,7 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int, appVersion string, auto
 	for i, title := range processTitles {
 		tracker.statuses[i] = titleStatus{
 			TitleIndex:        title.Index,
-			Title:             title.OutputFileName(),
+			Title:             title.ProgressName(),
 			DiscId:            title.DiscId,
 			Ripping:           Pending,
 			Encoding:          Pending,

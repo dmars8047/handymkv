@@ -44,6 +44,18 @@ type TitleInfo struct {
 	DiscDBType string
 	// The file name derived from TheDiscDB, used for the ripped file. Empty if unknown.
 	DiscDBFileName string
+	// A short name from TheDiscDB for the progress table, without the series/movie name
+	// (e.g. "S01E22 - Skin of Evil"). Empty if unknown.
+	DiscDBShortName string
+}
+
+// ProgressName is the name shown in the progress table.
+func (t *TitleInfo) ProgressName() string {
+	if t.DiscDBShortName != "" {
+		return t.DiscDBShortName
+	}
+
+	return strings.TrimSuffix(t.OutputFileName(), ".mkv")
 }
 
 // OutputFileName is the name of the ripped MKV file: the name from TheDiscDB if available,

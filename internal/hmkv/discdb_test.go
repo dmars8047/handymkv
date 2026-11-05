@@ -151,6 +151,15 @@ func TestApplyDiscDBMatch(t *testing.T) {
 	if titles[3].DiscDBName != "Star Trek: The Next Generation - Making of: Season 4 [Extra]" {
 		t.Errorf("DiscDBName = %q", titles[3].DiscDBName)
 	}
+	if got := titles[0].ProgressName(); got != "S04E07 - Reunion" {
+		t.Errorf("ProgressName() = %q", got)
+	}
+	if got := titles[3].ProgressName(); got != "Making of: Season 4" {
+		t.Errorf("ProgressName() = %q", got)
+	}
+	if got := titles[4].ProgressName(); got != "title_t04" {
+		t.Errorf("ProgressName() = %q", got)
+	}
 	if titles[4].DiscDBName != "" {
 		t.Errorf("unexpected DiscDBName %q", titles[4].DiscDBName)
 	}

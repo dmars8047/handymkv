@@ -112,14 +112,20 @@ func (pt *progressTracker) refreshDisplay() {
 		clear() // First time - do full clear
 	}
 	PrintLogo()
-	fmt.Printf("%-30s%-10s%-20s%-20s\n", "Title", "Disc", "Ripping", "Encoding")
-	fmt.Println(strings.Repeat("-", 80))
+	fmt.Printf("%-*s%-*s%-*s%s\n",
+		progressTitleWidth, "Title",
+		progressDiscWidth, "Disc",
+		progressStatusWidth, "Ripping",
+		"Encoding")
+	fmt.Println(strings.Repeat("-", progressTableWidth))
 
 	for _, status := range pt.statuses {
-		// Format and pad each column
-		displayTitle := strings.TrimSuffix(status.Title, ".mkv")
-		titleCol, titleTooLong := padString(displayTitle, 30)
-		discIdCol, _ := padString(fmt.Sprintf("%d", status.DiscId), 10)
+		// Long titles are wrapped at word boundaries inside the title column, so the
+		// continuation lines stay aligned under the title instead of running into the
+		// following rows.
+		titleLines := wrapText(status.Title, progressTitleWidth-progressColumnGap)
+
+		discIdCol, _ := padString(fmt.Sprintf("%d", status.DiscId), progressDiscWidth)
 
 		rippingStr := formatProgressStatus(
 			status.Ripping,
@@ -131,20 +137,84 @@ func (pt *progressTracker) refreshDisplay() {
 			status.EncodingProgress,
 			pt.animationFrame,
 		)
-		rippingCol, _ := padString(rippingStr, 20)
-		encodingCol, _ := padString(encodingStr, 20)
+		rippingCol, _ := padString(rippingStr, progressStatusWidth)
 
-		if titleTooLong {
-			titleSpillOver := titleCol[27:]
-			titleCol = fmt.Sprintf("%s   ", titleCol[0:27])
-			fmt.Printf("%s%s%s%s\n", titleCol, discIdCol, rippingCol, encodingCol)
-			fmt.Printf("%s\n", titleSpillOver)
-			continue
+		titleCol, _ := padString(titleLines[0], progressTitleWidth)
+		fmt.Printf("%s%s%s%s\n", titleCol, discIdCol, rippingCol, encodingStr)
+
+		for _, line := range titleLines[1:] {
+			fmt.Printf("  %s\n", line)
 		}
-
-		// Print the row
-		fmt.Printf("%s%s%s%s\n", titleCol, discIdCol, rippingCol, encodingCol)
 	}
+}
+
+// Column widths of the progress table. The total stays within 80 characters.
+const (
+	progressTitleWidth  = 42
+	progressDiscWidth   = 6
+	progressStatusWidth = 16
+	progressColumnGap   = 2
+	progressTableWidth  = progressTitleWidth + progressDiscWidth + 2*progressStatusWidth
+)
+
+// wrapText splits text into lines of at most width characters, breaking at spaces. Words
+// longer than width are split. Continuation lines are indented by two characters, so they
+// are two characters shorter.
+func wrapText(text string, width int) []string {
+	if width < 4 {
+		width = 4
+	}
+
+	words := strings.Fields(text)
+	if len(words) == 0 {
+		return []string{""}
+	}
+
+	lines := make([]string, 0, 2)
+	var cur []rune
+	limit := width
+
+	flush := func() {
+		lines = append(lines, string(cur))
+		cur = cur[:0]
+		limit = width - 2
+	}
+
+	for _, word := range words {
+		w := []rune(word)
+
+		for len(w) > 0 {
+			sep := 0
+			if len(cur) > 0 {
+				sep = 1
+			}
+
+			if len(cur)+sep+len(w) <= limit {
+				if sep == 1 {
+					cur = append(cur, ' ')
+				}
+				cur = append(cur, w...)
+				w = nil
+				continue
+			}
+
+			if len(cur) > 0 {
+				flush()
+				continue
+			}
+
+			// A single word longer than the line: split it.
+			cur = append(cur, w[:limit]...)
+			w = w[limit:]
+			flush()
+		}
+	}
+
+	if len(cur) > 0 {
+		lines = append(lines, string(cur))
+	}
+
+	return lines
 }
 
 // formatProgressStatus returns a colored status string with percentage and
