@@ -71,14 +71,26 @@ func GetMakeMKVExecutable() (string, error) {
 	if runtime.GOOS == "windows" {
 		const winExecutable = "C:\\Program Files (x86)\\MakeMKV\\makemkvcon.exe"
 
-		_, err := os.Stat(winExecutable)
+		_, statErr := os.Stat(winExecutable)
 
-		// make sure that the file exists
-		if err != nil {
-			return "", fmt.Errorf("makemkvcon executable not accessible at %s: %w", winExecutable, err)
+		if statErr == nil {
+			return winExecutable, nil
 		}
 
-		return winExecutable, nil
+		// Last fallback: the 64-bit executable, first via $PATH, then in the default install location
+		const win64ExecutableName = "makemkvcon64.exe"
+
+		if _, err := exec.LookPath(win64ExecutableName); err == nil {
+			return win64ExecutableName, nil
+		}
+
+		const win64Executable = "C:\\Program Files (x86)\\MakeMKV\\makemkvcon64.exe"
+
+		if _, err := os.Stat(win64Executable); err == nil {
+			return win64Executable, nil
+		}
+
+		return "", fmt.Errorf("makemkvcon executable not accessible at %s: %w", winExecutable, statErr)
 	}
 
 	return "", fmt.Errorf("makemkvcon executable not found")
