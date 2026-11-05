@@ -246,41 +246,10 @@ func Exec(mkv *MakeMKV, hb *HandBrakeCLI, discIds []int, appVersion string, auto
 					return
 				}
 
-				tracker.applyChange(params.TitleIndex, params.DiscId, func(status *titleStatus) {
-					status.Encoding = InProgress
-					status.EncodingProgress = 0
-				})
-
-				// Make sure the input file exists
-				if _, err := os.Stat(params.MKVOutputPath); os.IsNotExist(err) {
-					tracker.setError(fmt.Errorf("encoding input file %s does not exist", params.MKVOutputPath))
+				if err := encodeTitle(ctx, hb, &tracker, &params); err != nil {
+					tracker.setError(err)
 					cancelProcessing()
 					return
-				}
-
-				hbProgressUpdate := func(percent int) {
-					tracker.applyChange(params.TitleIndex, params.DiscId, func(status *titleStatus) {
-						status.EncodingProgress = percent
-					})
-				}
-
-				encErr := hb.encode(ctx, &params, hbProgressUpdate)
-
-				if encErr != nil {
-					tracker.setError(encErr)
-					cancelProcessing()
-					return
-				}
-
-				// Update progress for encoding completion
-				tracker.applyChange(params.TitleIndex, params.DiscId, func(status *titleStatus) {
-					status.Encoding = Complete
-					status.EncodingProgress = 100
-				})
-				tracker.forceRefresh() // Force immediate display for completion
-
-				if stat, err := os.Stat(params.HandBrakeOutputPath); err == nil {
-					params.EncodedFileSizeBytes = stat.Size()
 				}
 
 				manifestMu.Lock()
