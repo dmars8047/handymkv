@@ -48,7 +48,7 @@ func calculateTotalFileSizes(titles []TitleInfo, config *handyMKVConfig) (int64,
 	var totalSizeRaw, totalSizeEncoded int64
 
 	for _, title := range titles {
-		rawFilePath := filepath.Join(config.MKVOutputDirectory, title.Subdirectory(), title.FileName)
+		rawFilePath := filepath.Join(config.MKVOutputDirectory, title.Subdirectory(), title.OutputFileName())
 
 		rawFileSize, err := getFileSize(rawFilePath)
 

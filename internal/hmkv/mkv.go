@@ -31,6 +31,29 @@ type TitleInfo struct {
 	FileName string
 	// Whether or not to prepend the disc number.
 	PrependDiscToSub bool
+	// The source of the title on the disc as reported by MakeMKV, e.g. "00800.mpls" on a
+	// Blu-ray or the title number on a DVD.
+	SourceFile string
+	// The segment map reported by MakeMKV, e.g. "1,2,3".
+	SegmentMap string
+	// The device path of the drive as reported by MakeMKV, e.g. "/dev/sr0" or "E:".
+	DevicePath string
+	// The name of the movie/episode from TheDiscDB, for presentation. Empty if unknown.
+	DiscDBName string
+	// The item type from TheDiscDB (MainMovie, Episode, Extra, ...).
+	DiscDBType string
+	// The file name derived from TheDiscDB, used for the ripped file. Empty if unknown.
+	DiscDBFileName string
+}
+
+// OutputFileName is the name of the ripped MKV file: the name from TheDiscDB if available,
+// otherwise the name MakeMKV uses.
+func (t *TitleInfo) OutputFileName() string {
+	if t.DiscDBFileName != "" {
+		return t.DiscDBFileName
+	}
+
+	return t.FileName
 }
 
 func GetMakeMKVExecutable() (string, error) {
@@ -102,7 +125,7 @@ func (t *TitleInfo) SetPrependDiscToSubdirectory(val bool) {
 
 func (t *TitleInfo) GetEncodingFileName(config *handyMKVConfig) string {
 	// Replace spaces with underscores for encoding run.
-	encodingOutputFileName := strings.ReplaceAll(t.FileName, " ", "_")
+	encodingOutputFileName := strings.ReplaceAll(t.OutputFileName(), " ", "_")
 
 	if config.EncodeConfig.OutputFileFormat != "" && config.EncodeConfig.OutputFileFormat != "mkv" {
 		encodingOutputFileName = fmt.Sprintf("%s.%s", strings.TrimSuffix(encodingOutputFileName, ".mkv"), config.EncodeConfig.OutputFileFormat)
@@ -183,6 +206,11 @@ func (mkv *MakeMKV) getTitlesFromDisc(discId int) ([]TitleInfo, error) {
 	titleData := make(map[int]*TitleInfo)
 
 	var discTitle string
+	var devicePath string
+
+	// Source title IDs (TINFO 24) by title, used as source file for DVDs where MakeMKV
+	// does not report a source file name.
+	sourceTitleIds := make(map[int]string)
 
 	for _, line := range lines {
 		if discTitle == "" && strings.HasPrefix(line, fmt.Sprintf("DRV:%d,", discId)) {
@@ -193,6 +221,7 @@ func (mkv *MakeMKV) getTitlesFromDisc(discId int) ([]TitleInfo, error) {
 			}
 
 			discTitle = strings.Trim(parts[5], "\"")
+			devicePath = strings.Trim(strings.TrimRight(parts[6], "\r"), "\"")
 		}
 
 		// Extract the title index (e.g., TINFO:0, TINFO:1)
@@ -238,6 +267,12 @@ func (mkv *MakeMKV) getTitlesFromDisc(discId int) ([]TitleInfo, error) {
 				titleData[index].FileSizeDesc = value
 			case "11":
 				titleData[index].FileSizeBytes, _ = strconv.Atoi(value)
+			case "16": // Source file name, e.g. 00800.mpls
+				titleData[index].SourceFile = value
+			case "24": // Source title id
+				sourceTitleIds[index] = value
+			case "26": // Segment map
+				titleData[index].SegmentMap = value
 			case "27": // File Name
 				titleData[index].FileName = value
 			}
@@ -250,6 +285,10 @@ func (mkv *MakeMKV) getTitlesFromDisc(discId int) ([]TitleInfo, error) {
 	// Convert the map to a slice
 	for _, title := range titleData {
 		title.DiscId = discId
+		title.DevicePath = devicePath
+		if title.SourceFile == "" {
+			title.SourceFile = sourceTitleIds[title.Index]
+		}
 		titles = append(titles, *title)
 	}
 

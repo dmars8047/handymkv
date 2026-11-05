@@ -33,6 +33,10 @@ type handyMKVConfig struct {
 	DeleteRawMKVFiles  bool           `json:"delete_raw_mkv_files"`
 	DisableManifests   bool           `json:"disable_manifests,omitempty"`
 	ManifestDirectory  string         `json:"manifest_directory,omitempty"`
+	// Disables the title lookup in TheDiscDB (https://thediscdb.com).
+	DisableDiscDB bool `json:"disable_thediscdb,omitempty"`
+	// Optional API key for TheDiscDB, sent as "Authorization: ApiKey <key>".
+	DiscDBAPIKey string `json:"thediscdb_api_key,omitempty"`
 }
 
 func (config *handyMKVConfig) String() string {
@@ -83,6 +87,7 @@ func (config *handyMKVConfig) String() string {
 	if !config.DisableManifests && config.ManifestDirectory != "" {
 		fmt.Fprintf(&sb, "Manifest Directory:                 %s\n", config.ManifestDirectory)
 	}
+	fmt.Fprintf(&sb, "TheDiscDB Title Lookup:             %t\n", !config.DisableDiscDB)
 
 	return sb.String()
 }
